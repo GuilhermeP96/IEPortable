@@ -1,5 +1,10 @@
 # IE Portable
 
+🌐 **[English](README.en.md)** | **Português**
+
+[![GitHub](https://img.shields.io/github/license/GuilhermeP96/IEPortable)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)]()
+
 Simulador do Internet Explorer legado multiplataforma para compatibilidade com DVRs, câmeras de segurança e outros sistemas que requerem o IE.
 
 ## 🎯 Por que usar?
@@ -17,6 +22,7 @@ A Microsoft removeu permanentemente o Internet Explorer do Windows 11, porém mu
 - **Multiplataforma**: Funciona em Windows e Linux
 - **🆕 Gerenciador de Plugins**: Sandbox para plugins ActiveX baixados de câmeras/DVRs
 - **🆕 Detecção de CLSID**: Identifica automaticamente fabricantes pelo código ActiveX
+- **🆕 Integração Wine**: Suporte a plugins ActiveX reais no Linux via Wine
 
 ## 🚀 Instalação
 
@@ -29,8 +35,8 @@ A Microsoft removeu permanentemente o Internet Explorer do Windows 11, porém mu
 
 ```bash
 # Clone o repositório
-git clone https://github.com/seu-usuario/ie-portable.git
-cd ie-portable
+git clone https://github.com/GuilhermeP96/IEPortable.git
+cd IEPortable
 
 # Instale as dependências
 npm install
@@ -185,20 +191,23 @@ sudo pacman -S wine
 ## 🏗️ Arquitetura
 
 ```
-ie-portable/
+IEPortable/
 ├── src/
-│   ├── main.js              # Processo principal do Electron
-│   ├── preload.js           # Script de preload (bridge segura)
-│   ├── plugin-manager.js    # Gerenciador de plugins ActiveX
+│   ├── main.js                # Processo principal do Electron
+│   ├── preload.js             # Script de preload (bridge segura)
+│   ├── plugin-manager.js      # Gerenciador de plugins ActiveX
+│   ├── wine-manager.js        # Gerenciador de integração Wine
+│   ├── wine-activex-scanner.js # Scanner de plugins Wine
 │   └── renderer/
-│       ├── index.html       # Interface do navegador
-│       ├── styles.css       # Estilos
-│       ├── renderer.js      # Lógica da interface
+│       ├── index.html         # Interface do navegador
+│       ├── styles.css         # Estilos
+│       ├── renderer.js        # Lógica da interface
 │       ├── activex-handler.js # Detector de plugins ActiveX
-│       ├── stream-player.js # Player de streams RTSP/MJPEG
-│       └── plugin-manager.html # Interface do gerenciador de plugins
+│       ├── activex-polyfill.js # Emulação de ActiveXObject
+│       ├── stream-player.js   # Player de streams RTSP/MJPEG
+│       └── plugin-manager.html # Interface do gerenciador
 ├── assets/
-│   └── icons/               # Ícones do aplicativo
+│   └── icons/                 # Ícones do aplicativo
 ├── package.json
 └── README.md
 ```
@@ -216,6 +225,7 @@ MIT License - veja [LICENSE](LICENSE) para detalhes.
 - [Electron](https://www.electronjs.org/) - Framework para aplicações desktop
 - [electron-builder](https://www.electron.build/) - Empacotamento e distribuição
 - [electron-store](https://github.com/sindresorhus/electron-store) - Persistência de dados
+- [Wine](https://www.winehq.org/) - Compatibilidade Windows no Linux
 
 ---
 
