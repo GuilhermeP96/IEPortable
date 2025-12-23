@@ -1,0 +1,61 @@
+{
+  "name": "ie-portable",
+  "version": "1.0.0",
+  "description": "Simulador do Internet Explorer legado multiplataforma para compatibilidade com DVRs e câmeras de segurança",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "build:all": "electron-builder --win --linux"
+  },
+  "keywords": [
+    "internet-explorer",
+    "ie",
+    "legacy-browser",
+    "dvr",
+    "camera",
+    "compatibility"
+  ],
+  "author": "IEPortable Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "electron-store": "^8.1.0"
+  },
+  "build": {
+    "appId": "com.ieportable.browser",
+    "productName": "IE Portable",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "assets/icons/ie.ico"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "assets/icons",
+      "category": "Network"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

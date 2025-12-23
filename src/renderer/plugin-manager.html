@@ -1,0 +1,1776 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Gerenciador de Plugins - IE Portable</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* Header */
+    .header {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+
+    .header h1 {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #333;
+      font-size: 24px;
+    }
+
+    .header h1 .icon {
+      font-size: 32px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+
+    /* Stats */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .stat-card .value {
+      font-size: 28px;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .stat-card .label {
+      font-size: 12px;
+      color: #666;
+      margin-top: 5px;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5a6fd6;
+    }
+
+    .btn-secondary {
+      background: #e0e0e0;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #d0d0d0;
+    }
+
+    .btn-success {
+      background: #4caf50;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #43a047;
+    }
+
+    .btn-danger {
+      background: #f44336;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #e53935;
+    }
+
+    .btn-warning {
+      background: #ff9800;
+      color: white;
+    }
+
+    .btn-warning:hover {
+      background: #f57c00;
+    }
+
+    .btn-sm {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Plugin List */
+    .plugins-section {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .section-header h2 {
+      font-size: 18px;
+      color: #333;
+    }
+
+    .plugin-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .plugin-card {
+      background: #f5f5f5;
+      border-radius: 8px;
+      padding: 15px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      transition: all 0.2s;
+    }
+
+    .plugin-card:hover {
+      background: #eeeeee;
+    }
+
+    .plugin-icon {
+      width: 50px;
+      height: 50px;
+      background: #667eea;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .plugin-icon.exe { background: #2196f3; }
+    .plugin-icon.ocx { background: #9c27b0; }
+    .plugin-icon.dll { background: #ff5722; }
+    .plugin-icon.cab { background: #795548; }
+    .plugin-icon.msi { background: #607d8b; }
+
+    .plugin-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .plugin-name {
+      font-weight: 600;
+      color: #333;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .plugin-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 5px;
+      font-size: 12px;
+      color: #666;
+    }
+
+    .plugin-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .plugin-status {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .status-badge {
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .status-badge.registered {
+      background: #c8e6c9;
+      color: #2e7d32;
+    }
+
+    .status-badge.imported {
+      background: #e3f2fd;
+      color: #1565c0;
+    }
+
+    .status-badge.error {
+      background: #ffcdd2;
+      color: #c62828;
+    }
+
+    .plugin-actions {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #666;
+    }
+
+    .empty-state .icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+    }
+
+    .empty-state h3 {
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    /* Platform Info */
+    .platform-info {
+      background: #fff3e0;
+      border-radius: 8px;
+      padding: 12px 15px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    .platform-info.warning {
+      background: #fff3e0;
+      color: #e65100;
+    }
+
+    .platform-info.success {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .platform-info .icon {
+      font-size: 20px;
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      padding: 25px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-header h3 {
+      font-size: 18px;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #666;
+    }
+
+    .modal-close:hover {
+      color: #333;
+    }
+
+    .modal-body {
+      margin-bottom: 20px;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    /* Detail Fields */
+    .detail-field {
+      margin-bottom: 12px;
+    }
+
+    .detail-field label {
+      display: block;
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .detail-field .value {
+      font-size: 14px;
+      color: #333;
+      word-break: break-all;
+    }
+
+    .detail-field textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      resize: vertical;
+    }
+
+    /* Drop Zone */
+    .drop-zone {
+      border: 2px dashed #667eea;
+      border-radius: 10px;
+      padding: 30px;
+      text-align: center;
+      margin-bottom: 20px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      background: #f0f4ff;
+      border-color: #5a6fd6;
+    }
+
+    .drop-zone .icon {
+      font-size: 40px;
+      margin-bottom: 10px;
+      color: #667eea;
+    }
+
+    .drop-zone p {
+      color: #666;
+    }
+
+    .drop-zone .formats {
+      font-size: 12px;
+      color: #999;
+      margin-top: 8px;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #333;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      display: none;
+      animation: slideIn 0.3s ease;
+      z-index: 1001;
+    }
+
+    .toast.success { background: #4caf50; }
+    .toast.error { background: #f44336; }
+    .toast.warning { background: #ff9800; }
+
+    @keyframes slideIn {
+      from { transform: translateY(100px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Wine Setup Banner */
+    .wine-banner {
+      background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
+      color: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 15px rgba(238, 90, 90, 0.3);
+    }
+
+    .wine-banner.checking {
+      background: linear-gradient(135deg, #ffc107, #ffb300);
+      color: #333;
+    }
+
+    .wine-banner.installed {
+      background: linear-gradient(135deg, #4caf50, #43a047);
+    }
+
+    .wine-banner h3 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+
+    .wine-banner p {
+      opacity: 0.9;
+      margin-bottom: 15px;
+    }
+
+    .wine-banner .btn {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .wine-banner .btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .wine-banner.installed .btn {
+      background: rgba(0,0,0,0.1);
+    }
+
+    /* Wine Install Modal */
+    .install-steps {
+      margin: 15px 0;
+    }
+
+    .install-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px;
+      background: #f5f5f5;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+
+    .install-step .step-number {
+      width: 28px;
+      height: 28px;
+      background: #667eea;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .install-step.completed .step-number {
+      background: #4caf50;
+    }
+
+    .install-step.active .step-number {
+      background: #ff9800;
+      animation: pulse 1s infinite;
+    }
+
+    .install-step .step-content {
+      flex: 1;
+    }
+
+    .install-step .step-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .install-step .step-command {
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 12px;
+      background: #e0e0e0;
+      padding: 6px 10px;
+      border-radius: 4px;
+      margin-top: 6px;
+      word-break: break-all;
+      cursor: pointer;
+    }
+
+    .install-step .step-command:hover {
+      background: #d0d0d0;
+    }
+
+    .install-progress {
+      margin-top: 15px;
+      padding: 15px;
+      background: #263238;
+      border-radius: 8px;
+      color: #4caf50;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .install-progress .line {
+      margin: 2px 0;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    /* Copy button */
+    .copy-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 2px 6px;
+      font-size: 12px;
+      opacity: 0.7;
+    }
+
+    .copy-btn:hover {
+      opacity: 1;
+    }
+
+    /* Wine System Plugins Section */
+    .wine-plugins-section {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+
+    .wine-plugins-section h2 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 15px;
+    }
+
+    .wine-plugin-card {
+      background: linear-gradient(135deg, #f0f4ff 0%, #e8ecff 100%);
+      border-radius: 8px;
+      padding: 12px 15px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+      border: 1px solid #dde4ff;
+    }
+
+    .wine-plugin-icon {
+      width: 40px;
+      height: 40px;
+      background: #667eea;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 18px;
+    }
+
+    .wine-plugin-info {
+      flex: 1;
+    }
+
+    .wine-plugin-name {
+      font-weight: 600;
+      color: #333;
+      font-size: 13px;
+    }
+
+    .wine-plugin-clsid {
+      font-family: monospace;
+      font-size: 11px;
+      color: #666;
+      margin-top: 2px;
+    }
+
+    .wine-plugin-path {
+      font-size: 11px;
+      color: #888;
+      margin-top: 2px;
+      word-break: break-all;
+    }
+
+    .clsid-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 10px;
+    }
+
+    .scan-info {
+      background: #e8f5e9;
+      border-radius: 8px;
+      padding: 12px 15px;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+    }
+
+    .scan-info.needs-scan {
+      background: #fff3e0;
+    }
+
+    .scan-stats {
+      display: flex;
+      gap: 20px;
+    }
+
+    .scan-stat {
+      text-align: center;
+    }
+
+    .scan-stat .value {
+      font-size: 20px;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .scan-stat .label {
+      font-size: 11px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1><span class="icon">🧩</span> Gerenciador de Plugins ActiveX</h1>
+      <p style="margin-top: 8px; color: #666; font-size: 14px;">
+        Importe e gerencie plugins de câmeras e DVRs em uma sandbox isolada
+      </p>
+      <div class="header-actions">
+        <button class="btn btn-primary" id="btn-import">
+          <span>📥</span> Importar Plugin
+        </button>
+        <button class="btn btn-secondary" id="btn-open-sandbox">
+          <span>📁</span> Abrir Pasta Sandbox
+        </button>
+        <button class="btn btn-secondary" id="btn-refresh">
+          <span>🔄</span> Atualizar
+        </button>
+      </div>
+    </div>
+
+    <!-- Wine Setup Banner (visível apenas no Linux/macOS sem Wine) -->
+    <div class="wine-banner checking" id="wine-banner" style="display: none;">
+      <h3><span>🍷</span> <span id="wine-title">Verificando Wine...</span></h3>
+      <p id="wine-message">Aguarde enquanto verificamos se o Wine está instalado.</p>
+      <div id="wine-actions" style="display: none;">
+        <button class="btn" id="btn-wine-install">
+          <span>⬇️</span> Instalar Wine Automaticamente
+        </button>
+        <button class="btn" id="btn-wine-manual">
+          <span>📋</span> Ver Instruções Manuais
+        </button>
+      </div>
+    </div>
+
+    <!-- Platform Info -->
+    <div class="platform-info" id="platform-info">
+      <span class="icon">ℹ️</span>
+      <span id="platform-text">Verificando ambiente...</span>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats" id="stats">
+      <div class="stat-card">
+        <div class="value" id="stat-total">0</div>
+        <div class="label">Plugins Instalados</div>
+      </div>
+      <div class="stat-card">
+        <div class="value" id="stat-registered">0</div>
+        <div class="label">Registrados</div>
+      </div>
+      <div class="stat-card">
+        <div class="value" id="stat-size">0 KB</div>
+        <div class="label">Tamanho Total</div>
+      </div>
+      <div class="stat-card">
+        <div class="value" id="stat-ocx">0</div>
+        <div class="label">Arquivos OCX</div>
+      </div>
+    </div>
+
+    <!-- Drop Zone -->
+    <div class="drop-zone" id="drop-zone">
+      <div class="icon">📦</div>
+      <p>Arraste arquivos de plugin aqui ou clique para selecionar</p>
+      <div class="formats">Formatos suportados: .exe, .ocx, .cab, .dll, .msi</div>
+    </div>
+
+    <!-- Plugin List -->
+    <div class="plugins-section">
+      <div class="section-header">
+        <h2>Plugins Importados (Sandbox)</h2>
+      </div>
+      <div class="plugin-list" id="plugin-list">
+        <div class="empty-state">
+          <div class="icon">📦</div>
+          <h3>Nenhum plugin instalado</h3>
+          <p>Importe plugins de câmeras e DVRs para gerenciá-los aqui</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Wine System Plugins Section -->
+    <div class="wine-plugins-section" id="wine-plugins-section" style="display: none;">
+      <h2><span>🍷</span> Plugins do Sistema (Program Files)</h2>
+      
+      <div class="scan-info needs-scan" id="wine-scan-info">
+        <span>Clique em "Escanear" para detectar plugins instalados no Wine/Windows</span>
+        <button class="btn btn-primary btn-sm" id="btn-scan-wine">
+          <span>🔍</span> Escanear Plugins
+        </button>
+      </div>
+
+      <div id="wine-scan-results" style="display: none;">
+        <div class="scan-stats" id="wine-scan-stats">
+          <div class="scan-stat">
+            <div class="value" id="wine-clsids-count">0</div>
+            <div class="label">CLSIDs Registrados</div>
+          </div>
+          <div class="scan-stat">
+            <div class="value" id="wine-files-count">0</div>
+            <div class="label">Arquivos ActiveX</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Barra de progresso do registro -->
+      <div id="wine-register-progress" style="display: none; margin: 15px 0;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+          <span id="register-progress-text">Registrando plugins...</span>
+          <span id="register-progress-count">0/0</span>
+        </div>
+        <div style="background: #e0e0e0; border-radius: 4px; height: 8px; overflow: hidden;">
+          <div id="register-progress-bar" style="background: #667eea; height: 100%; width: 0%; transition: width 0.3s;"></div>
+        </div>
+      </div>
+
+      <div class="clsid-grid" id="wine-clsid-list">
+        <!-- Preenchido via JS -->
+      </div>
+
+      <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+        <button class="btn btn-success btn-sm" id="btn-auto-register" style="display: none;">
+          <span>📝</span> Registrar Todos Automaticamente
+        </button>
+        <button class="btn btn-secondary btn-sm" id="btn-open-program-files" style="display: none;">
+          <span>📁</span> Abrir Program Files
+        </button>
+        <button class="btn btn-secondary btn-sm" id="btn-clear-scan-cache" style="display: none;">
+          <span>🗑️</span> Limpar Cache
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Detalhes -->
+  <div class="modal" id="modal-details">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Detalhes do Plugin</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-details-body">
+        <!-- Preenchido via JS -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger btn-sm" id="btn-remove-plugin">
+          <span>🗑️</span> Remover
+        </button>
+        <button class="btn btn-secondary" onclick="closeModal('modal-details')">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Confirmação -->
+  <div class="modal" id="modal-confirm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="confirm-title">Confirmar</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-message">Tem certeza?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modal-confirm')">Cancelar</button>
+        <button class="btn btn-danger" id="btn-confirm-yes">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Instalação do Wine -->
+  <div class="modal" id="modal-wine-install">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3>🍷 Instalação do Wine</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 15px;">
+          O Wine é necessário para executar plugins ActiveX (.exe, .ocx, .dll) no Linux/macOS.
+        </p>
+        
+        <div id="wine-install-steps" class="install-steps">
+          <!-- Preenchido via JS -->
+        </div>
+
+        <div id="wine-install-progress" class="install-progress" style="display: none;">
+          <div class="line">Aguardando início da instalação...</div>
+        </div>
+
+        <div id="wine-install-auto" style="margin-top: 20px;">
+          <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+            💡 <strong>Instalação Automática:</strong> Clique no botão abaixo para instalar automaticamente.
+            Será solicitada sua senha de administrador.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modal-wine-install')">Fechar</button>
+        <button class="btn btn-secondary" id="btn-copy-script">
+          <span>📋</span> Copiar Script
+        </button>
+        <button class="btn btn-success" id="btn-start-wine-install">
+          <span>⬇️</span> Instalar Agora
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // Comunicação com o processo principal
+    const { ipcRenderer } = require('electron');
+
+    let plugins = [];
+    let selectedPluginId = null;
+
+    // Inicialização
+    document.addEventListener('DOMContentLoaded', () => {
+      checkWineStatus(); // Verificar Wine primeiro
+      loadPlugins();
+      loadStats();
+      setupEventListeners();
+    });
+
+    // ============================================
+    // Wine Management
+    // ============================================
+    
+    let wineStatus = null;
+
+    async function checkWineStatus() {
+      const banner = document.getElementById('wine-banner');
+      const title = document.getElementById('wine-title');
+      const message = document.getElementById('wine-message');
+      const actions = document.getElementById('wine-actions');
+
+      try {
+        wineStatus = await ipcRenderer.invoke('wine-status');
+        
+        if (wineStatus.platform === 'win32') {
+          // Windows - não precisa de Wine
+          banner.style.display = 'none';
+          return;
+        }
+
+        banner.style.display = 'block';
+
+        if (wineStatus.wine.installed) {
+          // Wine instalado
+          banner.className = 'wine-banner installed';
+          title.textContent = '✅ Wine Instalado';
+          message.textContent = wineStatus.wine.version 
+            ? `Versão: ${wineStatus.wine.version}` 
+            : 'Wine detectado e funcionando.';
+          actions.style.display = 'none';
+        } else {
+          // Wine não instalado
+          banner.className = 'wine-banner';
+          title.textContent = '⚠️ Wine Não Instalado';
+          message.textContent = 'O Wine é necessário para executar plugins ActiveX no Linux. Instale para habilitar todas as funcionalidades.';
+          actions.style.display = 'flex';
+          actions.style.gap = '10px';
+        }
+      } catch (e) {
+        console.error('Erro ao verificar Wine:', e);
+        banner.style.display = 'none';
+      }
+    }
+
+    async function showWineInstallModal() {
+      const stepsContainer = document.getElementById('wine-install-steps');
+      
+      try {
+        const instructions = await ipcRenderer.invoke('wine-install-instructions');
+        
+        if (!instructions.needed) {
+          showToast('Wine não é necessário no Windows', 'success');
+          return;
+        }
+
+        stepsContainer.innerHTML = instructions.steps.map((step, i) => `
+          <div class="install-step" id="wine-step-${i}">
+            <div class="step-number">${i + 1}</div>
+            <div class="step-content">
+              <div class="step-title">${escapeHtml(step.title)}</div>
+              ${step.manual 
+                ? `<div style="color: #666; font-size: 13px;">${escapeHtml(step.note || '')}</div>`
+                : `<div class="step-command" onclick="copyToClipboard('${escapeHtml(step.command)}')" title="Clique para copiar">
+                    ${escapeHtml(step.command)}
+                    <button class="copy-btn">📋</button>
+                  </div>`
+              }
+              ${step.note && !step.manual ? `<div style="color: #666; font-size: 12px; margin-top: 4px;">${escapeHtml(step.note)}</div>` : ''}
+            </div>
+          </div>
+        `).join('');
+
+        document.getElementById('modal-wine-install').classList.add('active');
+      } catch (e) {
+        showToast('Erro ao carregar instruções: ' + e.message, 'error');
+      }
+    }
+
+    async function startWineInstall() {
+      const progressDiv = document.getElementById('wine-install-progress');
+      const installBtn = document.getElementById('btn-start-wine-install');
+      
+      progressDiv.style.display = 'block';
+      progressDiv.innerHTML = '<div class="line">Iniciando instalação...</div>';
+      installBtn.disabled = true;
+      installBtn.innerHTML = '<span>⏳</span> Instalando...';
+
+      try {
+        const result = await ipcRenderer.invoke('wine-install');
+        
+        progressDiv.innerHTML += '<div class="line" style="color: #4caf50;">✅ ' + result.message + '</div>';
+        showToast('Wine instalado com sucesso!', 'success');
+        
+        // Atualizar status
+        setTimeout(() => {
+          checkWineStatus();
+          loadStats();
+          closeModal('modal-wine-install');
+        }, 2000);
+      } catch (e) {
+        progressDiv.innerHTML += '<div class="line" style="color: #f44336;">❌ Erro: ' + escapeHtml(e.message) + '</div>';
+        showToast('Falha na instalação: ' + e.message, 'error');
+      } finally {
+        installBtn.disabled = false;
+        installBtn.innerHTML = '<span>⬇️</span> Instalar Agora';
+      }
+    }
+
+    async function copyWineScript() {
+      try {
+        const script = await ipcRenderer.invoke('wine-generate-script');
+        if (script) {
+          await navigator.clipboard.writeText(script);
+          showToast('Script copiado! Cole em um terminal e execute.', 'success');
+        } else {
+          showToast('Script não disponível para Windows', 'warning');
+        }
+      } catch (e) {
+        showToast('Erro ao copiar script', 'error');
+      }
+    }
+
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('Comando copiado!', 'success');
+      });
+    }
+
+    // Listener para progresso de instalação
+    ipcRenderer.on('wine-install-progress', (event, progress) => {
+      const progressDiv = document.getElementById('wine-install-progress');
+      
+      if (progress.message) {
+        progressDiv.innerHTML += `<div class="line">→ ${escapeHtml(progress.message)}</div>`;
+      }
+      if (progress.output) {
+        const lines = progress.output.split('\n').filter(l => l.trim());
+        for (const line of lines) {
+          progressDiv.innerHTML += `<div class="line">${escapeHtml(line)}</div>`;
+        }
+      }
+      
+      // Auto-scroll
+      progressDiv.scrollTop = progressDiv.scrollHeight;
+
+      // Atualizar step visual
+      if (progress.step !== undefined) {
+        document.querySelectorAll('.install-step').forEach((el, i) => {
+          if (i < progress.step - 1) {
+            el.classList.add('completed');
+            el.classList.remove('active');
+          } else if (i === progress.step - 1) {
+            el.classList.add('active');
+            el.classList.remove('completed');
+          } else {
+            el.classList.remove('active', 'completed');
+          }
+        });
+      }
+    });
+
+    function setupEventListeners() {
+      // Botões do header
+      document.getElementById('btn-import').addEventListener('click', importPlugin);
+      document.getElementById('btn-open-sandbox').addEventListener('click', openSandbox);
+      document.getElementById('btn-refresh').addEventListener('click', () => {
+        checkWineStatus();
+        loadPlugins();
+        loadStats();
+      });
+
+      // Botões do Wine
+      document.getElementById('btn-wine-install').addEventListener('click', showWineInstallModal);
+      document.getElementById('btn-wine-manual').addEventListener('click', showWineInstallModal);
+      document.getElementById('btn-start-wine-install').addEventListener('click', startWineInstall);
+      document.getElementById('btn-copy-script').addEventListener('click', copyWineScript);
+
+      // Drop zone
+      const dropZone = document.getElementById('drop-zone');
+      dropZone.addEventListener('click', importPlugin);
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+      });
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+      });
+      dropZone.addEventListener('drop', handleDrop);
+
+      // Fechar modais
+      document.querySelectorAll('.modal-close').forEach(btn => {
+        btn.addEventListener('click', () => {
+          btn.closest('.modal').classList.remove('active');
+        });
+      });
+
+      document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) modal.classList.remove('active');
+        });
+      });
+
+      // Botão remover no modal
+      document.getElementById('btn-remove-plugin').addEventListener('click', () => {
+        if (selectedPluginId) {
+          confirmRemove(selectedPluginId);
+        }
+      });
+    }
+
+    async function loadPlugins() {
+      try {
+        plugins = await ipcRenderer.invoke('plugin-list');
+        renderPluginList();
+      } catch (e) {
+        showToast('Erro ao carregar plugins', 'error');
+      }
+    }
+
+    async function loadStats() {
+      try {
+        const stats = await ipcRenderer.invoke('plugin-stats');
+        
+        document.getElementById('stat-total').textContent = stats.totalPlugins;
+        document.getElementById('stat-registered').textContent = stats.registeredPlugins;
+        document.getElementById('stat-size').textContent = stats.totalSizeFormatted;
+        document.getElementById('stat-ocx').textContent = stats.byExtension.ocx + stats.byExtension.dll;
+
+        // Atualizar info da plataforma
+        const platformInfo = document.getElementById('platform-info');
+        const platformText = document.getElementById('platform-text');
+        
+        if (stats.platform === 'win32') {
+          platformInfo.className = 'platform-info success';
+          platformText.innerHTML = '✅ <strong>Windows</strong> - Suporte completo a plugins ActiveX';
+        } else if (stats.hasWine) {
+          platformInfo.className = 'platform-info success';
+          platformText.innerHTML = `✅ <strong>${stats.platform}</strong> com Wine - Plugins podem ser executados via Wine`;
+        } else {
+          platformInfo.className = 'platform-info warning';
+          platformText.innerHTML = `⚠️ <strong>${stats.platform}</strong> - Instale o Wine para executar plugins Windows`;
+        }
+      } catch (e) {
+        console.error('Erro ao carregar stats:', e);
+      }
+    }
+
+    function renderPluginList() {
+      const container = document.getElementById('plugin-list');
+      
+      if (plugins.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">📦</div>
+            <h3>Nenhum plugin instalado</h3>
+            <p>Importe plugins de câmeras e DVRs para gerenciá-los aqui</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = plugins.map(plugin => {
+        const ext = plugin.extension.replace('.', '');
+        const statusClass = plugin.registered ? 'registered' : 
+                           plugin.registrationError ? 'error' : 'imported';
+        const statusText = plugin.registered ? 'Registrado' : 
+                          plugin.registrationError ? 'Erro' : 'Importado';
+
+        return `
+          <div class="plugin-card" data-id="${plugin.id}">
+            <div class="plugin-icon ${ext}">${getExtIcon(ext)}</div>
+            <div class="plugin-info">
+              <div class="plugin-name">${escapeHtml(plugin.originalName)}</div>
+              <div class="plugin-meta">
+                <span>📏 ${plugin.sizeFormatted}</span>
+                <span>📅 ${formatDate(plugin.importDate)}</span>
+                ${plugin.productName ? `<span>📦 ${escapeHtml(plugin.productName)}</span>` : ''}
+              </div>
+            </div>
+            <div class="plugin-status">
+              <span class="status-badge ${statusClass}">${statusText}</span>
+            </div>
+            <div class="plugin-actions">
+              ${plugin.canRegister && !plugin.registered ? 
+                `<button class="btn btn-success btn-sm" onclick="registerPlugin('${plugin.id}')" title="Registrar">📝</button>` : ''}
+              ${plugin.registered ? 
+                `<button class="btn btn-warning btn-sm" onclick="unregisterPlugin('${plugin.id}')" title="Desregistrar">📤</button>` : ''}
+              ${plugin.extension === '.exe' && plugin.platformSupport.canRun ? 
+                `<button class="btn btn-primary btn-sm" onclick="runPlugin('${plugin.id}')" title="Executar">▶️</button>` : ''}
+              <button class="btn btn-secondary btn-sm" onclick="showDetails('${plugin.id}')" title="Detalhes">ℹ️</button>
+              <button class="btn btn-secondary btn-sm" onclick="openPluginFolder('${plugin.id}')" title="Abrir Pasta">📁</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function getExtIcon(ext) {
+      const icons = {
+        exe: '⚙️',
+        ocx: '🔌',
+        dll: '📚',
+        cab: '📦',
+        msi: '💿'
+      };
+      return icons[ext] || '📄';
+    }
+
+    function formatDate(isoDate) {
+      if (!isoDate) return 'N/A';
+      return new Date(isoDate).toLocaleDateString('pt-BR');
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    async function importPlugin() {
+      try {
+        const result = await ipcRenderer.invoke('plugin-import');
+        if (result.canceled) return;
+        
+        if (result.success) {
+          showToast('Plugin importado com sucesso!', 'success');
+          loadPlugins();
+          loadStats();
+        } else if (result.existingPlugin) {
+          showToast('Plugin já existe na sandbox', 'warning');
+        } else {
+          showToast(result.error || 'Erro ao importar', 'error');
+        }
+      } catch (e) {
+        showToast('Erro ao importar plugin: ' + e.message, 'error');
+      }
+    }
+
+    async function handleDrop(e) {
+      e.preventDefault();
+      document.getElementById('drop-zone').classList.remove('dragover');
+      
+      const files = e.dataTransfer.files;
+      if (files.length === 0) return;
+
+      for (const file of files) {
+        try {
+          const result = await ipcRenderer.invoke('plugin-import-path', file.path);
+          if (result.success) {
+            showToast(`${file.name} importado!`, 'success');
+          } else {
+            showToast(result.error || `Erro ao importar ${file.name}`, 'error');
+          }
+        } catch (e) {
+          showToast(`Erro: ${e.message}`, 'error');
+        }
+      }
+      
+      loadPlugins();
+      loadStats();
+    }
+
+    async function registerPlugin(id) {
+      try {
+        showToast('Registrando plugin...', 'warning');
+        await ipcRenderer.invoke('plugin-register', id);
+        showToast('Plugin registrado com sucesso!', 'success');
+        loadPlugins();
+        loadStats();
+      } catch (e) {
+        showToast('Erro ao registrar: ' + e.message, 'error');
+      }
+    }
+
+    async function unregisterPlugin(id) {
+      try {
+        await ipcRenderer.invoke('plugin-unregister', id);
+        showToast('Plugin desregistrado', 'success');
+        loadPlugins();
+        loadStats();
+      } catch (e) {
+        showToast('Erro ao desregistrar: ' + e.message, 'error');
+      }
+    }
+
+    async function runPlugin(id) {
+      try {
+        await ipcRenderer.invoke('plugin-run', id);
+        showToast('Plugin iniciado', 'success');
+      } catch (e) {
+        showToast('Erro ao executar: ' + e.message, 'error');
+      }
+    }
+
+    function showDetails(id) {
+      selectedPluginId = id;
+      const plugin = plugins.find(p => p.id === id);
+      if (!plugin) return;
+
+      const body = document.getElementById('modal-details-body');
+      body.innerHTML = `
+        <div class="detail-field">
+          <label>Nome do Arquivo</label>
+          <div class="value">${escapeHtml(plugin.originalName)}</div>
+        </div>
+        <div class="detail-field">
+          <label>Extensão</label>
+          <div class="value">${plugin.extension}</div>
+        </div>
+        <div class="detail-field">
+          <label>Tamanho</label>
+          <div class="value">${plugin.sizeFormatted}</div>
+        </div>
+        <div class="detail-field">
+          <label>Hash MD5</label>
+          <div class="value" style="font-family: monospace; font-size: 12px;">${plugin.hash}</div>
+        </div>
+        <div class="detail-field">
+          <label>Data de Importação</label>
+          <div class="value">${new Date(plugin.importDate).toLocaleString('pt-BR')}</div>
+        </div>
+        ${plugin.lastUsed ? `
+        <div class="detail-field">
+          <label>Último Uso</label>
+          <div class="value">${new Date(plugin.lastUsed).toLocaleString('pt-BR')}</div>
+        </div>
+        ` : ''}
+        ${plugin.productName ? `
+        <div class="detail-field">
+          <label>Nome do Produto</label>
+          <div class="value">${escapeHtml(plugin.productName)}</div>
+        </div>
+        ` : ''}
+        ${plugin.fileVersion ? `
+        <div class="detail-field">
+          <label>Versão</label>
+          <div class="value">${escapeHtml(plugin.fileVersion)}</div>
+        </div>
+        ` : ''}
+        ${plugin.company ? `
+        <div class="detail-field">
+          <label>Empresa</label>
+          <div class="value">${escapeHtml(plugin.company)}</div>
+        </div>
+        ` : ''}
+        ${plugin.sourceUrl ? `
+        <div class="detail-field">
+          <label>URL de Origem</label>
+          <div class="value">${escapeHtml(plugin.sourceUrl)}</div>
+        </div>
+        ` : ''}
+        <div class="detail-field">
+          <label>Caminho na Sandbox</label>
+          <div class="value" style="font-size: 12px;">${escapeHtml(plugin.sandboxPath)}</div>
+        </div>
+        <div class="detail-field">
+          <label>Status</label>
+          <div class="value">
+            ${plugin.registered ? '✅ Registrado' : '📥 Importado'}
+            ${plugin.registrationError ? ` - ⚠️ ${escapeHtml(plugin.registrationError)}` : ''}
+          </div>
+        </div>
+        <div class="detail-field">
+          <label>Suporte da Plataforma</label>
+          <div class="value">
+            ${plugin.platformSupport.notes.map(n => `<div>• ${escapeHtml(n)}</div>`).join('')}
+          </div>
+        </div>
+        <div class="detail-field">
+          <label>Notas</label>
+          <textarea id="plugin-notes" rows="3" placeholder="Adicione notas sobre este plugin...">${escapeHtml(plugin.notes || '')}</textarea>
+        </div>
+      `;
+
+      // Salvar notas ao mudar
+      document.getElementById('plugin-notes').addEventListener('change', async (e) => {
+        await ipcRenderer.invoke('plugin-update-notes', id, e.target.value);
+      });
+
+      document.getElementById('modal-details').classList.add('active');
+    }
+
+    function confirmRemove(id) {
+      const plugin = plugins.find(p => p.id === id);
+      if (!plugin) return;
+
+      document.getElementById('confirm-title').textContent = 'Remover Plugin';
+      document.getElementById('confirm-message').textContent = 
+        `Tem certeza que deseja remover "${plugin.originalName}"? Esta ação não pode ser desfeita.`;
+      
+      document.getElementById('btn-confirm-yes').onclick = async () => {
+        closeModal('modal-confirm');
+        closeModal('modal-details');
+        
+        try {
+          await ipcRenderer.invoke('plugin-remove', id);
+          showToast('Plugin removido', 'success');
+          loadPlugins();
+          loadStats();
+        } catch (e) {
+          showToast('Erro ao remover: ' + e.message, 'error');
+        }
+      };
+
+      document.getElementById('modal-confirm').classList.add('active');
+    }
+
+    function openSandbox() {
+      ipcRenderer.invoke('plugin-open-sandbox');
+    }
+
+    function openPluginFolder(id) {
+      ipcRenderer.invoke('plugin-open-folder', id);
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+    }
+
+    function showToast(message, type = '') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast ${type}`;
+      toast.style.display = 'block';
+      
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 3000);
+    }
+
+    // ============================================
+    // Wine System Plugins Scanner
+    // ============================================
+
+    let winePluginsData = null;
+
+    function setupWinePluginsSection() {
+      const section = document.getElementById('wine-plugins-section');
+      
+      // Mostrar seção apenas se Wine disponível ou Windows
+      if (wineStatus && (wineStatus.platform === 'win32' || wineStatus.wine?.installed)) {
+        section.style.display = 'block';
+        
+        // Event listeners para botões
+        document.getElementById('btn-scan-wine').addEventListener('click', scanWinePlugins);
+        document.getElementById('btn-open-program-files').addEventListener('click', openProgramFiles);
+        document.getElementById('btn-clear-scan-cache').addEventListener('click', clearScanCache);
+        document.getElementById('btn-auto-register').addEventListener('click', autoRegisterPlugins);
+        
+        // Listener para progresso de registro
+        ipcRenderer.on('wine-register-progress', (event, progress) => {
+          updateRegisterProgress(progress);
+        });
+      }
+    }
+
+    function updateRegisterProgress(progress) {
+      const progressDiv = document.getElementById('wine-register-progress');
+      const progressText = document.getElementById('register-progress-text');
+      const progressCount = document.getElementById('register-progress-count');
+      const progressBar = document.getElementById('register-progress-bar');
+      
+      progressDiv.style.display = 'block';
+      progressText.textContent = `Registrando: ${progress.file}`;
+      progressCount.textContent = `${progress.current}/${progress.total}`;
+      progressBar.style.width = `${(progress.current / progress.total) * 100}%`;
+    }
+
+    async function autoRegisterPlugins() {
+      const btn = document.getElementById('btn-auto-register');
+      const progressDiv = document.getElementById('wine-register-progress');
+      
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳</span> Registrando...';
+      progressDiv.style.display = 'block';
+      
+      try {
+        const result = await ipcRenderer.invoke('auto-register-wine-plugins');
+        
+        if (result.success) {
+          showToast(`✅ ${result.registered} plugins registrados, ${result.skipped} ignorados`, 'success');
+          
+          // Re-escanear para atualizar a lista
+          await scanWinePlugins();
+        } else {
+          showToast(`Erro: ${result.error}`, 'error');
+        }
+      } catch (e) {
+        showToast(`Erro: ${e.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>📝</span> Registrar Todos Automaticamente';
+        progressDiv.style.display = 'none';
+      }
+    }
+
+    async function registerSingleFile(filePath) {
+      try {
+        showToast('Registrando plugin...', 'warning');
+        const result = await ipcRenderer.invoke('register-wine-file', filePath);
+        
+        if (result.success) {
+          showToast('Plugin registrado com sucesso!', 'success');
+          await scanWinePlugins();
+        } else {
+          showToast(`Erro: ${result.error}`, 'error');
+        }
+      } catch (e) {
+        showToast(`Erro: ${e.message}`, 'error');
+      }
+    }
+
+    async function scanWinePlugins() {
+      const btn = document.getElementById('btn-scan-wine');
+      const scanInfo = document.getElementById('wine-scan-info');
+      const results = document.getElementById('wine-scan-results');
+      
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳</span> Escaneando...';
+      scanInfo.innerHTML = '<span>Escaneando Program Files e registro do Wine...</span>';
+
+      try {
+        const data = await ipcRenderer.invoke('scan-wine-plugins');
+        winePluginsData = data;
+
+        if (data.success) {
+          scanInfo.className = 'scan-info';
+          scanInfo.innerHTML = `
+            <span>✅ Escaneamento concluído em ${new Date(data.scanDate).toLocaleString('pt-BR')}</span>
+            <button class="btn btn-primary btn-sm" id="btn-scan-wine" onclick="scanWinePlugins()">
+              <span>🔄</span> Atualizar
+            </button>
+          `;
+          
+          results.style.display = 'block';
+          document.getElementById('wine-clsids-count').textContent = data.summary?.registeredClsids || 0;
+          document.getElementById('wine-files-count').textContent = data.summary?.totalFiles || 0;
+          
+          document.getElementById('btn-open-program-files').style.display = 'inline-flex';
+          document.getElementById('btn-clear-scan-cache').style.display = 'inline-flex';
+          
+          // Mostrar botão de auto-registro se há arquivos não registrados
+          const programFilesFiles = (data.files || []).filter(f => 
+            f.path.includes('Program Files') && 
+            !f.path.includes('windows/system') &&
+            (f.extension === '.ocx' || f.extension === '.dll')
+          );
+          if (programFilesFiles.length > 0) {
+            document.getElementById('btn-auto-register').style.display = 'inline-flex';
+          }
+
+          renderWineClsidList(data);
+          showToast(`Encontrados ${data.summary?.registeredClsids || 0} CLSIDs registrados`, 'success');
+        } else {
+          scanInfo.className = 'scan-info needs-scan';
+          scanInfo.innerHTML = `<span>⚠️ ${data.error || 'Erro no escaneamento'}</span>
+            <button class="btn btn-primary btn-sm" id="btn-scan-wine" onclick="scanWinePlugins()">
+              <span>🔍</span> Tentar Novamente
+            </button>`;
+          showToast('Erro ao escanear plugins', 'error');
+        }
+      } catch (e) {
+        scanInfo.className = 'scan-info needs-scan';
+        scanInfo.innerHTML = `<span>❌ Erro: ${escapeHtml(e.message)}</span>
+          <button class="btn btn-primary btn-sm" id="btn-scan-wine" onclick="scanWinePlugins()">
+            <span>🔍</span> Tentar Novamente
+          </button>`;
+        showToast('Erro: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>🔍</span> Escanear Plugins';
+      }
+    }
+
+    function renderWineClsidList(data) {
+      const container = document.getElementById('wine-clsid-list');
+      let html = '';
+      
+      // Pegar os CLSIDs registrados para verificar status
+      const registeredClsids = data.registeredClsids || {};
+      const registeredDlls = new Set(
+        Object.values(registeredClsids)
+          .map(c => c.inprocServer?.toLowerCase().split(/[\\/]/).pop())
+          .filter(Boolean)
+      );
+      
+      // Mostrar arquivos encontrados nos Program Files
+      if (data.files && data.files.length > 0) {
+        // Filtrar apenas arquivos de Program Files (não de system32/syswow64)
+        const programFilesFiles = data.files.filter(f => 
+          f.path.includes('Program Files') && 
+          !f.path.includes('windows/system') &&
+          (f.extension === '.ocx' || f.extension === '.dll')
+        );
+        
+        if (programFilesFiles.length > 0) {
+          html += `<h4 style="margin: 15px 0 10px; color: #333;">📂 Arquivos em Program Files (${programFilesFiles.length})</h4>`;
+          html += programFilesFiles.map(file => {
+            const isRegistered = registeredDlls.has(file.name.toLowerCase());
+            const statusBadge = isRegistered 
+              ? '<span style="background: #c8e6c9; color: #2e7d32; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin-left: 8px;">✓ Registrado</span>'
+              : '<span style="background: #ffecb3; color: #f57c00; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin-left: 8px;">Não registrado</span>';
+            
+            const registerBtn = !isRegistered 
+              ? `<button class="btn btn-success btn-sm" onclick="registerSingleFile('${escapeHtml(file.path)}')" style="margin-left: auto;" title="Registrar este arquivo">📝</button>`
+              : '';
+            
+            return `
+              <div class="wine-plugin-card" style="display: flex; align-items: center;">
+                <div class="wine-plugin-icon" style="background: ${isRegistered ? '#4caf50' : '#ff9800'};">${isRegistered ? '✓' : '📦'}</div>
+                <div class="wine-plugin-info" style="flex: 1;">
+                  <div class="wine-plugin-name">${escapeHtml(file.name)}${statusBadge}</div>
+                  <div class="wine-plugin-path">${escapeHtml(file.relativePath || file.path)}</div>
+                  <div style="font-size: 11px; color: #888;">${formatFileSize(file.size)}</div>
+                </div>
+                ${registerBtn}
+              </div>
+            `;
+          }).join('');
+        }
+      }
+      
+      // Mostrar CLSIDs registrados
+      if (data.registeredClsids && Object.keys(data.registeredClsids).length > 0) {
+        const clsids = Object.entries(data.registeredClsids);
+        const displayClsids = clsids.slice(0, 20);
+        const hasMore = clsids.length > 20;
+
+        html += `<h4 style="margin: 15px 0 10px; color: #333;">🔌 CLSIDs Registrados (${clsids.length})</h4>`;
+        
+        html += displayClsids.map(([clsid, info]) => {
+          const dllName = info.inprocServer ? info.inprocServer.split(/[\\/]/).pop() : 'N/A';
+          
+          return `
+            <div class="wine-plugin-card">
+              <div class="wine-plugin-icon">🔌</div>
+              <div class="wine-plugin-info">
+                <div class="wine-plugin-name">${escapeHtml(dllName)}</div>
+                <div class="wine-plugin-clsid">{${escapeHtml(clsid)}}</div>
+                ${info.inprocServer ? `<div class="wine-plugin-path">${escapeHtml(info.inprocServer)}</div>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        if (hasMore) {
+          html += `
+            <div style="text-align: center; padding: 15px;">
+              <button class="btn btn-secondary btn-sm" onclick="showAllWineClsids()">
+                Mostrar todos (${clsids.length} CLSIDs)
+              </button>
+            </div>
+          `;
+        }
+      }
+      
+      if (!html) {
+        html = `
+          <div style="text-align: center; padding: 20px; color: #666;">
+            <p>Nenhum plugin ActiveX encontrado nos Program Files</p>
+            <p style="font-size: 12px;">Execute instaladores de plugins na sandbox para instalá-los</p>
+          </div>
+        `;
+      }
+      
+      container.innerHTML = html;
+    }
+    
+    function formatFileSize(bytes) {
+      if (!bytes) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function showAllWineClsids() {
+      if (!winePluginsData || !winePluginsData.registeredClsids) return;
+      
+      const container = document.getElementById('wine-clsid-list');
+      const clsids = Object.entries(winePluginsData.registeredClsids);
+
+      container.innerHTML = clsids.map(([clsid, info]) => {
+        const dllName = info.inprocServer ? info.inprocServer.split(/[\\/]/).pop() : 'N/A';
+        
+        return `
+          <div class="wine-plugin-card">
+            <div class="wine-plugin-icon">🔌</div>
+            <div class="wine-plugin-info">
+              <div class="wine-plugin-name">${escapeHtml(dllName)}</div>
+              <div class="wine-plugin-clsid">{${escapeHtml(clsid)}}</div>
+              ${info.inprocServer ? `<div class="wine-plugin-path">${escapeHtml(info.inprocServer)}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function openProgramFiles() {
+      try {
+        await ipcRenderer.invoke('open-wine-program-files');
+      } catch (e) {
+        showToast('Erro ao abrir pasta: ' + e.message, 'error');
+      }
+    }
+
+    async function clearScanCache() {
+      try {
+        await ipcRenderer.invoke('clear-plugin-scan-cache');
+        winePluginsData = null;
+        
+        document.getElementById('wine-scan-info').className = 'scan-info needs-scan';
+        document.getElementById('wine-scan-info').innerHTML = `
+          <span>Clique em "Escanear" para detectar plugins instalados no Wine/Windows</span>
+          <button class="btn btn-primary btn-sm" id="btn-scan-wine" onclick="scanWinePlugins()">
+            <span>🔍</span> Escanear Plugins
+          </button>
+        `;
+        document.getElementById('wine-scan-results').style.display = 'none';
+        document.getElementById('wine-clsid-list').innerHTML = '';
+        document.getElementById('btn-open-program-files').style.display = 'none';
+        document.getElementById('btn-clear-scan-cache').style.display = 'none';
+        
+        showToast('Cache limpo', 'success');
+      } catch (e) {
+        showToast('Erro: ' + e.message, 'error');
+      }
+    }
+
+    // Adicionar setup da seção Wine após carregar status
+    const originalCheckWineStatus = checkWineStatus;
+    checkWineStatus = async function() {
+      await originalCheckWineStatus.call(this);
+      setupWinePluginsSection();
+    };
+  </script>
+</body>
+</html>

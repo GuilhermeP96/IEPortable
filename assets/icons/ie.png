@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="ieGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00A4EF"/>
+      <stop offset="50%" style="stop-color:#0078D4"/>
+      <stop offset="100%" style="stop-color:#005A9E"/>
+    </linearGradient>
+  </defs>
+  <!-- Fundo circular -->
+  <circle fill="#FFFFFF" cx="128" cy="128" r="120"/>
+  <!-- e estilizado -->
+  <path fill="url(#ieGrad)" d="M128,40c-48.6,0-88,39.4-88,88s39.4,88,88,88c35.3,0,65.8-20.8,79.8-50.8l-23.6-12.2
+    c-10,15.3-26.8,24.4-44.7,24.1c-24.8-0.4-45.1-19.9-46.3-44.6h99c1.5-17.9-2.1-36-10.6-52C167.8,54,149.2,40,128,40z
+    M83.8,115.5c5.3-22.1,24.8-37.8,47.6-38.5c19.7-0.6,38.1,11.8,46.2,31.2c1.2,2.9,2.2,5.8,2.9,7.3H83.8z"/>
+  <!-- Órbita -->
+  <ellipse fill="none" stroke="url(#ieGrad)" stroke-width="14" cx="128" cy="128" rx="110" ry="50" 
+    transform="rotate(-25 128 128)"/>
+  <!-- Ponto dourado -->
+  <circle fill="#FFB900" cx="210" cy="90" r="12"/>
+</svg>

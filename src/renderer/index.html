@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>IE Portable</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Barra de Ferramentas -->
+  <div id="toolbar">
+    <!-- Botões de Navegação -->
+    <div class="toolbar-buttons">
+      <button id="btn-back" class="nav-btn" title="Voltar (Alt+Seta Esquerda)" disabled>
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+        </svg>
+      </button>
+      <button id="btn-forward" class="nav-btn" title="Avançar (Alt+Seta Direita)" disabled>
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+        </svg>
+      </button>
+      <button id="btn-refresh" class="nav-btn" title="Atualizar (F5)">
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+        </svg>
+      </button>
+      <button id="btn-stop" class="nav-btn" title="Parar (Esc)" style="display: none;">
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+        </svg>
+      </button>
+      <button id="btn-home" class="nav-btn" title="Página Inicial">
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Barra de Endereço -->
+    <div class="address-bar">
+      <div class="security-indicator" id="security-indicator" title="Informações de segurança">
+        <svg viewBox="0 0 24 24" width="16" height="16">
+          <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+        </svg>
+      </div>
+      <input type="text" id="url-input" placeholder="Pesquisar ou digitar um endereço" autocomplete="off" spellcheck="false">
+      <button id="btn-go" class="go-btn" title="Ir">
+        <svg viewBox="0 0 24 24" width="18" height="18">
+          <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Botões de Ação -->
+    <div class="toolbar-actions">
+      <button id="btn-favorite" class="action-btn" title="Adicionar aos favoritos (Ctrl+D)">
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+        </svg>
+      </button>
+      <button id="btn-favorites-menu" class="action-btn" title="Favoritos">
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path fill="currentColor" d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
+        </svg>
+      </button>
+      <button id="btn-plugins" class="action-btn" title="Gerenciador de Plugins (Ctrl+Shift+P)">
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path fill="currentColor" d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7s2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/>
+        </svg>
+      </button>
+      <button id="btn-settings" class="action-btn" title="Configurações">
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Indicador de Versão do IE -->
+  <div id="ie-version-badge">
+    <span id="ie-version-text">IE11</span>
+  </div>
+
+  <!-- Container do WebView -->
+  <div id="browser-container">
+    <webview id="webview" 
+      src="about:blank" 
+      allowpopups
+      plugins
+      disablewebsecurity
+      webpreferences="allowRunningInsecureContent=yes">
+    </webview>
+    
+    <!-- Página Inicial Personalizada -->
+    <div id="start-page" class="hidden">
+      <div class="start-content">
+        <img src="../assets/icons/ie-logo.svg" alt="IE Portable" class="logo">
+        <h1>IE Portable</h1>
+        <p>Simulador do Internet Explorer para sistemas legados</p>
+        
+        <div class="quick-access">
+          <h3>Acesso Rápido</h3>
+          <div id="quick-access-items" class="quick-items">
+            <!-- Preenchido via JavaScript -->
+          </div>
+        </div>
+        
+        <div class="tips">
+          <h3>Dicas</h3>
+          <ul>
+            <li>Use <kbd>Ctrl+L</kbd> para focar na barra de endereço</li>
+            <li>Use o menu <strong>Ferramentas > Versão do IE</strong> para mudar o modo de compatibilidade</li>
+            <li>Certificados auto-assinados são aceitos automaticamente</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barra de Status -->
+  <div id="statusbar">
+    <span id="status-text">Pronto</span>
+    <span id="status-zone">Internet</span>
+  </div>
+
+  <!-- Modal de Favoritos -->
+  <div id="favorites-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Adicionar aos Favoritos</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="fav-name">Nome:</label>
+          <input type="text" id="fav-name">
+        </div>
+        <div class="form-group">
+          <label for="fav-url">URL:</label>
+          <input type="text" id="fav-url" readonly>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="fav-save" class="btn-primary">Adicionar</button>
+        <button id="fav-cancel" class="btn-secondary">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Configurações -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h2>Opções da Internet</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="settings-tabs">
+          <button class="tab-btn active" data-tab="general">Geral</button>
+          <button class="tab-btn" data-tab="compatibility">Compatibilidade</button>
+          <button class="tab-btn" data-tab="security">Segurança</button>
+        </div>
+        
+        <div id="tab-general" class="tab-content active">
+          <div class="form-group">
+            <label for="setting-homepage">Página Inicial:</label>
+            <input type="text" id="setting-homepage" placeholder="about:blank">
+          </div>
+          <div class="form-group">
+            <label>Na inicialização:</label>
+            <select id="setting-startup">
+              <option value="homepage">Abrir página inicial</option>
+              <option value="blank">Abrir página em branco</option>
+              <option value="last">Restaurar última sessão</option>
+            </select>
+          </div>
+        </div>
+        
+        <div id="tab-compatibility" class="tab-content">
+          <div class="form-group">
+            <label for="setting-ie-version">Versão do Internet Explorer:</label>
+            <select id="setting-ie-version">
+              <option value="ie11">Internet Explorer 11</option>
+              <option value="ie10">Internet Explorer 10</option>
+              <option value="ie9">Internet Explorer 9</option>
+              <option value="ie8">Internet Explorer 8</option>
+              <option value="ie7">Internet Explorer 7</option>
+              <option value="ie6">Internet Explorer 6</option>
+            </select>
+          </div>
+          <p class="help-text">
+            Alterar a versão do IE muda o User-Agent enviado aos sites.
+            Útil para compatibilidade com sistemas legados que verificam a versão do navegador.
+          </p>
+        </div>
+        
+        <div id="tab-security" class="tab-content">
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="setting-allow-insecure" checked>
+              Permitir conteúdo não seguro (HTTP em páginas HTTPS)
+            </label>
+          </div>
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="setting-ignore-certs" checked>
+              Ignorar erros de certificado (necessário para DVRs)
+            </label>
+          </div>
+          <p class="help-text warning">
+            ⚠️ Essas opções reduzem a segurança. Use apenas para acessar dispositivos confiáveis em rede local.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="settings-save" class="btn-primary">OK</button>
+        <button id="settings-cancel" class="btn-secondary">Cancelar</button>
+        <button id="settings-apply" class="btn-secondary">Aplicar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Painel de Favoritos Lateral -->
+  <div id="favorites-panel" class="panel hidden">
+    <div class="panel-header">
+      <h3>Favoritos</h3>
+      <button class="panel-close">&times;</button>
+    </div>
+    <div class="panel-body">
+      <div id="favorites-list">
+        <!-- Preenchido via JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="hidden">
+    <div class="loading-spinner"></div>
+  </div>
+
+  <!-- Modal de Plugin Detectado -->
+  <div id="plugin-modal" class="modal hidden">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h2>🔌 Plugin ActiveX Detectado</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="plugin-warning">
+          <p>Este site está tentando instalar um <strong>plugin ActiveX</strong> que só funciona no Internet Explorer nativo do Windows.</p>
+          <p>O IE Portable oferece alternativas para acessar o conteúdo:</p>
+        </div>
+        
+        <div class="plugin-info" id="plugin-info">
+          <div class="info-row">
+            <span class="info-label">Plugin:</span>
+            <span class="info-value" id="plugin-name">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Fabricante:</span>
+            <span class="info-value" id="plugin-brand">-</span>
+          </div>
+        </div>
+        
+        <div class="plugin-alternatives">
+          <h4>Alternativas:</h4>
+          
+          <div class="alternative-option">
+            <button id="btn-try-stream" class="btn-alternative">
+              📹 Tentar Stream Direto
+            </button>
+            <p>Tenta conectar ao stream de vídeo RTSP/MJPEG do dispositivo</p>
+          </div>
+          
+          <div class="alternative-option">
+            <button id="btn-show-urls" class="btn-alternative">
+              🔗 Ver URLs Possíveis
+            </button>
+            <p>Mostra URLs de stream conhecidas para este fabricante</p>
+          </div>
+          
+          <div class="alternative-option">
+            <button id="btn-manual-stream" class="btn-alternative">
+              ⚙️ Configurar Manualmente
+            </button>
+            <p>Inserir URL de stream, usuário e senha manualmente</p>
+          </div>
+          
+          <div class="alternative-option">
+            <button id="btn-continue-anyway" class="btn-alternative btn-secondary">
+              ➡️ Ignorar e Continuar
+            </button>
+            <p>Continuar navegando sem o plugin (interface pode não funcionar)</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Configuração Manual de Stream -->
+  <div id="stream-config-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>⚙️ Configurar Stream</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="stream-url">URL do Stream:</label>
+          <input type="text" id="stream-url" placeholder="rtsp://192.168.1.100:554/stream1">
+          <small>Suporta: RTSP, MJPEG, HLS, HTTP direto</small>
+        </div>
+        <div class="form-group">
+          <label for="stream-user">Usuário:</label>
+          <input type="text" id="stream-user" placeholder="admin">
+        </div>
+        <div class="form-group">
+          <label for="stream-pass">Senha:</label>
+          <input type="password" id="stream-pass" placeholder="senha">
+        </div>
+        <div class="form-group">
+          <label for="stream-type">Tipo de Stream:</label>
+          <select id="stream-type">
+            <option value="auto">Detectar automaticamente</option>
+            <option value="rtsp">RTSP</option>
+            <option value="mjpeg">MJPEG</option>
+            <option value="hls">HLS (m3u8)</option>
+            <option value="image">Imagem com refresh</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="stream-connect" class="btn-primary">Conectar</button>
+        <button id="stream-cancel" class="btn-secondary">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de URLs Conhecidas -->
+  <div id="urls-modal" class="modal hidden">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h2>🔗 URLs de Stream Conhecidas</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Clique em uma URL para tentar conectar:</p>
+        <div id="urls-list" class="urls-list">
+          <!-- Preenchido via JavaScript -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Container do Player de Stream -->
+  <div id="stream-player-container" style="display: none;">
+    <!-- Preenchido pelo StreamPlayer -->
+  </div>
+
+  <script src="activex-handler.js"></script>
+  <script src="stream-player.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>

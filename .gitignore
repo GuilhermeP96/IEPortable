@@ -1,0 +1,29 @@
+# Dependências
+node_modules/
+
+# Build
+dist/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Testes (contém credenciais)
+tests/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Configuração local
+config.local.json
+
+# Electron Builder
+release/
