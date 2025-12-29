@@ -718,6 +718,9 @@
         <button class="btn btn-primary" id="btn-import">
           <span>📥</span> Importar Plugin
         </button>
+        <button class="btn btn-primary" id="btn-scan-folder">
+          <span>🔍</span> Escanear Pasta
+        </button>
         <button class="btn btn-secondary" id="btn-open-sandbox">
           <span>📁</span> Abrir Pasta Sandbox
         </button>
@@ -1099,6 +1102,7 @@
     function setupEventListeners() {
       // Botões do header
       document.getElementById('btn-import').addEventListener('click', importPlugin);
+      document.getElementById('btn-scan-folder').addEventListener('click', scanPluginFolder);
       document.getElementById('btn-open-sandbox').addEventListener('click', openSandbox);
       document.getElementById('btn-refresh').addEventListener('click', () => {
         checkWineStatus();
@@ -1253,6 +1257,33 @@
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    }
+
+    async function scanPluginFolder() {
+      try {
+        const result = await ipcRenderer.invoke('plugin-scan-folder');
+        if (result.canceled) return;
+        
+        if (result.success) {
+          const count = result.imported || 0;
+          const skipped = result.skipped || 0;
+          
+          if (count > 0) {
+            showToast(`${count} plugin(s) importado(s)!` + (skipped > 0 ? ` (${skipped} já existiam)` : ''), 'success');
+          } else if (skipped > 0) {
+            showToast(`Nenhum novo plugin. ${skipped} já existiam.`, 'warning');
+          } else {
+            showToast('Nenhum plugin encontrado na pasta.', 'warning');
+          }
+          
+          loadPlugins();
+          loadStats();
+        } else {
+          showToast(result.error || 'Erro ao escanear pasta', 'error');
+        }
+      } catch (e) {
+        showToast('Erro ao escanear pasta: ' + e.message, 'error');
+      }
     }
 
     async function importPlugin() {

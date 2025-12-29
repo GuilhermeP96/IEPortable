@@ -2,115 +2,711 @@
 // IE Portable - Renderer Process
 // ============================================
 
-// Script do polyfill ActiveX (inline para funcionar sem nodeIntegration)
+// Script do polyfill ActiveX - emulação completa para DVRs
 const ACTIVEX_POLYFILL_SCRIPT = `
 (function() {
-  // Se já existe ActiveXObject real (IE) ou já foi injetado, não fazer nada
-  if ((window.ActiveXObject && !window.ActiveXObject.__polyfill) || window.__iePortableActiveXPolyfill) {
-    return;
+  if (window.__iePortableActiveXPolyfill) return;
+  window.__iePortableActiveXPolyfill = true;
+  
+  console.log('[ActiveX-Emu] Iniciando emulador completo...');
+  
+  // CLSIDs conhecidos
+  var KNOWN_CLSIDS = {
+    'B6D5419C-D381-4687-9CFC-A9E2CD7008F5': { brand: 'Ipega', type: 'dvr' },
+    '6263DEED-F971-4C18-AB42-3ABCDE741A89': { brand: 'Hikvision', type: 'dvr' },
+    '08CF8D24-DA5E-4C0B-B2E3-E72B3C714BAC': { brand: 'Hikvision', type: 'dvr' },
+    'CCAB80D2-5DCF-44FB-9EAE-0F632B758498': { brand: 'Hikvision', type: 'dvr' },
+    '4B3476C6-3A85-4C2C-BD55-BD8F1E028B00': { brand: 'Dahua', type: 'dvr' },
+    '39B06C8F-91A7-4CAC-8B94-C8B8F26B1A8C': { brand: 'Dahua', type: 'dvr' }
+  };
+  
+  // Estado global
+  var activeXState = {
+    host: window.location.hostname,
+    port: window.location.port || 80,
+    username: 'admin',
+    password: 'admin',
+    loggedIn: false,
+    channels: [],
+    pluginInstalled: true // Fingir que está instalado
+  };
+  
+  // ========================================
+  // Interceptar verificações de plugin
+  // ========================================
+  
+  // Fingir que o navegador é IE
+  Object.defineProperty(navigator, 'userAgent', {
+    get: function() {
+      return 'Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko';
+    },
+    configurable: true
+  });
+  
+  // Fingir que plugins ActiveX estão instalados
+  Object.defineProperty(navigator, 'plugins', {
+    get: function() {
+      var plugins = {
+        length: 1,
+        0: { name: 'ActiveX Plugin', filename: 'activex.dll' },
+        'ActiveX Plugin': { name: 'ActiveX Plugin', filename: 'activex.dll' },
+        item: function(i) { return this[i]; },
+        namedItem: function(n) { return this[n]; },
+        refresh: function() {}
+      };
+      return plugins;
+    },
+    configurable: true
+  });
+  
+  // Interceptar document.body.createControlRange (usado para verificar IE)
+  if (document.body) {
+    document.body.createControlRange = function() {
+      return { add: function() {}, remove: function() {} };
+    };
   }
-
-  console.log('[IE Portable] ActiveX Polyfill carregado na página');
-
-  // CLSIDs conhecidos de DVRs
-  const KNOWN_CLSIDS = {
-    'E0DA039D-992F-4187-A105-C699A71F5F06': { brand: 'Qualvision/Tecvoz', type: 'video-player' },
-    '55F88890-DE29-4E36-B13B-E0774CAC9C5A': { brand: 'Hikvision', type: 'video-player' },
-    '4B3476C6-3A85-4F86-8418-D1130C952B05': { brand: 'Dahua', type: 'video-player' }
+  
+  // Fingir suporte a VBScript
+  window.execScript = function(code, lang) {
+    console.log('[ActiveX-Emu] execScript chamado:', lang);
+    if (lang && lang.toLowerCase() === 'vbscript') {
+      return true;
+    }
+    return eval(code);
   };
-
-  // Métodos comuns de players de DVR
-  const DVR_PLAYER_METHODS = {
-    Login: function(ip, port, user, pass) {
-      console.log('[ActiveX] Login:', ip, port, user);
-      this._connectionInfo = { ip, port, user, pass };
-      this._connected = true;
-      return 1;
-    },
-    Logout: function() { this._connected = false; return 1; },
-    Connect: function(ip, port, user, pass) { return this.Login(ip, port, user, pass); },
-    Disconnect: function() { return this.Logout(); },
-    Play: function(channel) {
-      console.log('[ActiveX] Play canal:', channel);
-      this._playing = true;
-      window.postMessage({ type: 'ACTIVEX_PLAY', clsid: this._clsid, channel: channel, connectionInfo: this._connectionInfo }, '*');
-      return 1;
-    },
-    Stop: function() {
-      this._playing = false;
-      window.postMessage({ type: 'ACTIVEX_STOP', clsid: this._clsid }, '*');
-      return 1;
-    },
-    StartRealPlay: function(ch) { return this.Play(ch); },
-    StopRealPlay: function() { return this.Stop(); },
-    SetChannelNum: function(n) { this._channelNum = n; },
-    GetChannelNum: function() { return this._channelNum || 0; },
-    SetVisible: function(v) { this._visible = v; },
-    SetWndNum: function(n) { this._wndNum = n; },
-    PTZControl: function(cmd, p1, p2) { console.log('[ActiveX] PTZ:', cmd); return 1; }
-  };
-
-  // Criar objeto fake ActiveX
-  window.ActiveXObject = function(progId) {
-    console.log('[ActiveX] Criando objeto:', progId);
-    let clsid = null;
-    const match = progId.match(/{([A-F0-9-]+)}/i);
-    if (match) clsid = match[1].toUpperCase();
-    
-    window.postMessage({ type: 'ACTIVEX_CREATED', progId: progId, clsid: clsid }, '*');
-    
-    return Object.assign({
-      _progId: progId,
-      _clsid: clsid,
-      _connected: false,
-      _playing: false
-    }, DVR_PLAYER_METHODS);
-  };
-  window.ActiveXObject.__polyfill = true;
-
-  // Interceptar tags <object> com CLSIDs
-  function processObjectTags() {
-    document.querySelectorAll('object, embed').forEach(function(el) {
-      if (el.dataset.ieProcessed) return;
-      el.dataset.ieProcessed = 'true';
+  
+  // ========================================
+  // Criar controle DVR completo
+  // ========================================
+  
+  function createDVRControl(element) {
+    var ctrl = {
+      readyState: 4,
+      valid: 1,
+      object: null,
+      _host: activeXState.host,
+      _port: activeXState.port,
+      _username: 'admin',
+      _password: 'admin',
+      _loggedIn: false,
+      _channel: 1,
+      _element: element,
+      _videoContainer: null,
       
-      var classid = el.getAttribute('classid') || el.getAttribute('clsid') || '';
-      var match = classid.match(/{?([A-F0-9-]{36})}?/i);
+      // Login real
+      Login: function(ip, port, user, pass) {
+        console.log('[ActiveX-Emu] Login:', ip, port, user);
+        this._host = ip || activeXState.host;
+        this._port = port || 80;
+        this._username = user || 'admin';
+        this._password = pass || 'admin';
+        this._loggedIn = true;
+        activeXState.host = this._host;
+        activeXState.username = this._username;
+        activeXState.password = this._password;
+        activeXState.loggedIn = true;
+        return 1;
+      },
       
-      if (match) {
-        var clsid = match[1].toUpperCase();
-        console.log('[ActiveX] Tag object detectada, CLSID:', clsid);
-        window.postMessage({ type: 'ACTIVEX_OBJECT_TAG', clsid: clsid }, '*');
+      Logout: function() {
+        this._loggedIn = false;
+        activeXState.loggedIn = false;
+        return 1;
+      },
+      
+      Init: function() { 
+        console.log('[ActiveX-Emu] Init');
+        return 1; 
+      },
+      
+      // Play - tenta mostrar stream
+      Play: function() {
+        console.log('[ActiveX-Emu] Play');
+        this._startStream();
+        return 1;
+      },
+      
+      Stop: function() {
+        console.log('[ActiveX-Emu] Stop');
+        this._stopStream();
+        return 1;
+      },
+      
+      Pause: function() { return 1; },
+      Resume: function() { return 1; },
+      
+      StartRealPlay: function(channel) {
+        console.log('[ActiveX-Emu] StartRealPlay:', channel);
+        this._channel = channel || 1;
+        this._startStream();
+        return 1;
+      },
+      
+      StopRealPlay: function() {
+        this._stopStream();
+        return 1;
+      },
+      
+      ConnectRealPlay: function() {
+        this._startStream();
+        return 1;
+      },
+      
+      SetChannel: function(ch) { 
+        this._channel = ch;
+        return 1; 
+      },
+      GetChannel: function() { return this._channel; },
+      
+      // PTZ
+      PTZControl: function(cmd, speed) {
+        console.log('[ActiveX-Emu] PTZ:', cmd, speed);
+        return 1;
+      },
+      PTZControlEx: function() { return 1; },
+      
+      // Gravação
+      StartRecord: function() { return 1; },
+      StopRecord: function() { return 1; },
+      Playback: function() { return 1; },
+      
+      // Configuração
+      DeviceConfig: function() { return 1; },
+      GetConfig: function() { return '{}'; },
+      SetConfig: function() { return 1; },
+      GetDeviceInfo: function() { return '{}'; },
+      
+      // Snapshot
+      CapturePicture: function() { return 1; },
+      SavePicture: function() { return 1; },
+      
+      // Query
+      QueryRecordFile: function() { return 1; },
+      QueryRecordFileEx: function() { return 1; },
+      
+      // Iniciar stream de vídeo
+      _startStream: function() {
+        var self = this;
+        if (!this._element) return;
         
-        // Criar placeholder visual
-        var info = KNOWN_CLSIDS[clsid] || { brand: 'Desconhecido' };
-        var placeholder = document.createElement('div');
-        placeholder.style.cssText = 'background:#1a1a2e;border:2px solid #0f3460;border-radius:8px;color:#e94560;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:200px;padding:20px;text-align:center;font-family:Arial;';
-        placeholder.innerHTML = '<div style="font-size:48px">📹</div><div style="font-size:18px;font-weight:bold;margin:10px 0">Plugin ActiveX: ' + info.brand + '</div><div style="font-size:12px;color:#888">CLSID: ' + clsid.substring(0,8) + '...</div><button onclick="window.postMessage({type:\\'ACTIVEX_SHOW_PLAYER\\',clsid:\\'' + clsid + '\\'},\\'*\\')" style="background:#e94560;color:white;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;margin-top:15px;font-size:14px">🎬 Abrir Player Alternativo</button>';
+        // Criar container se não existir
+        if (!this._videoContainer) {
+          this._videoContainer = document.createElement('div');
+          this._videoContainer.className = 'activex-emu-video';
+          this._videoContainer.style.cssText = 'width:100%;height:100%;background:#000;display:flex;align-items:center;justify-content:center;position:absolute;top:0;left:0;';
+          
+          var img = document.createElement('img');
+          img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;';
+          img.alt = 'Stream';
+          this._videoContainer._img = img;
+          
+          var status = document.createElement('div');
+          status.style.cssText = 'position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,0.7);color:#fff;padding:3px 8px;font-size:11px;border-radius:3px;';
+          status.textContent = 'Conectando...';
+          this._videoContainer._status = status;
+          
+          this._videoContainer.appendChild(img);
+          this._videoContainer.appendChild(status);
+          
+          // Inserir após o elemento
+          var parent = this._element.parentNode;
+          if (parent) {
+            parent.style.position = 'relative';
+            parent.appendChild(this._videoContainer);
+          }
+        }
         
-        if (el.width) placeholder.style.width = el.width + 'px';
-        if (el.height) placeholder.style.height = el.height + 'px';
+        // Tentar carregar imagem
+        var urls = this._getSnapshotUrls();
+        this._tryUrls(urls, 0);
+      },
+      
+      _stopStream: function() {
+        if (this._videoContainer && this._videoContainer._img) {
+          this._videoContainer._img.src = '';
+        }
+        if (this._refreshInterval) {
+          clearInterval(this._refreshInterval);
+        }
+      },
+      
+      _getSnapshotUrls: function() {
+        var host = this._host || activeXState.host || window.location.hostname;
+        var ch = this._channel || 1;
+        var auth = (this._username && this._password) ? (this._username + ':' + this._password + '@') : '';
+        
+        return [
+          'http://' + host + '/cgi-bin/snapshot.cgi?channel=' + ch,
+          'http://' + host + '/snap.jpg',
+          'http://' + host + '/tmpfs/auto.jpg',
+          'http://' + host + '/image/jpeg.cgi',
+          'http://' + host + '/ISAPI/Streaming/channels/' + ch + '01/picture',
+          'http://' + host + '/cgi-bin/images_snapshot.cgi'
+        ];
+      },
+      
+      _tryUrls: function(urls, index) {
+        var self = this;
+        if (index >= urls.length) {
+          if (this._videoContainer && this._videoContainer._status) {
+            this._videoContainer._status.textContent = 'Não foi possível conectar';
+            this._videoContainer._status.onclick = function() {
+              window.postMessage({ type: 'ACTIVEX_SHOW_PLAYER', clsid: 'B6D5419C-D381-4687-9CFC-A9E2CD7008F5' }, '*');
+            };
+            this._videoContainer._status.style.cursor = 'pointer';
+          }
+          return;
+        }
+        
+        var url = urls[index];
+        var img = this._videoContainer._img;
+        var status = this._videoContainer._status;
+        
+        status.textContent = 'Tentando: ' + url.split('/').pop();
+        
+        var testImg = new Image();
+        testImg.onload = function() {
+          console.log('[ActiveX-Emu] URL funciona:', url);
+          img.src = url;
+          status.textContent = 'Conectado';
+          
+          // Auto-refresh
+          self._refreshInterval = setInterval(function() {
+            img.src = url + '?t=' + Date.now();
+          }, 2000);
+        };
+        testImg.onerror = function() {
+          self._tryUrls(urls, index + 1);
+        };
+        testImg.src = url + '?t=' + Date.now();
+      }
+    };
+    
+    // Definir propriedade object
+    try {
+      Object.defineProperty(ctrl, 'object', {
+        get: function() { return ctrl; },
+        configurable: true
+      });
+    } catch(e) {}
+    
+    return ctrl;
+  }
+  
+  // Criar emulador de MSXML2.DOMDocument
+  function createXMLDocument() {
+    var doc = document.implementation.createDocument('', '', null);
+    
+    // Adicionar métodos que o IE espera
+    doc.loadXML = function(xmlString) {
+      try {
+        var parser = new DOMParser();
+        var newDoc = parser.parseFromString(xmlString, 'application/xml');
+        // Copiar nodes
+        while (doc.firstChild) doc.removeChild(doc.firstChild);
+        for (var i = 0; i < newDoc.childNodes.length; i++) {
+          doc.appendChild(doc.importNode(newDoc.childNodes[i], true));
+        }
+        doc.parseError = { errorCode: 0 };
+        return true;
+      } catch(e) {
+        doc.parseError = { errorCode: 1, reason: e.message };
+        return false;
+      }
+    };
+    
+    doc.load = function(url) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, false);
+      try {
+        xhr.send();
+        return doc.loadXML(xhr.responseText);
+      } catch(e) {
+        return false;
+      }
+    };
+    
+    // Propriedades IE
+    doc.parseError = { errorCode: 0, reason: '' };
+    doc.async = false;
+    doc.preserveWhiteSpace = true;
+    doc.resolveExternals = false;
+    
+    // selectNodes e selectSingleNode (XPath)
+    doc.selectNodes = function(xpath) {
+      try {
+        var result = doc.evaluate(xpath, doc, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+        var nodes = [];
+        for (var i = 0; i < result.snapshotLength; i++) {
+          nodes.push(result.snapshotItem(i));
+        }
+        return nodes;
+      } catch(e) {
+        return [];
+      }
+    };
+    
+    doc.selectSingleNode = function(xpath) {
+      var nodes = doc.selectNodes(xpath);
+      return nodes.length > 0 ? nodes[0] : null;
+    };
+    
+    // transformNode para XSLT
+    doc.transformNode = function(xsl) {
+      try {
+        var processor = new XSLTProcessor();
+        processor.importStylesheet(xsl);
+        var result = processor.transformToDocument(doc);
+        return new XMLSerializer().serializeToString(result);
+      } catch(e) {
+        return '';
+      }
+    };
+    
+    // xml property
+    Object.defineProperty(doc, 'xml', {
+      get: function() {
+        return new XMLSerializer().serializeToString(doc);
+      }
+    });
+    
+    // text property
+    Object.defineProperty(doc, 'text', {
+      get: function() {
+        return doc.textContent || '';
+      }
+    });
+    
+    return doc;
+  }
+  
+  // Criar emulador de MSXML2.XMLHTTP
+  function createXMLHTTP() {
+    var xhr = new XMLHttpRequest();
+    
+    // Adicionar propriedades IE
+    Object.defineProperty(xhr, 'responseBody', {
+      get: function() { return xhr.response; }
+    });
+    
+    return xhr;
+  }
+  
+  // Stub para new ActiveXObject()
+  if (!window.ActiveXObject) {
+    window.ActiveXObject = function(progId) {
+      console.log('[ActiveX-Emu] new ActiveXObject:', progId);
+      
+      var progIdLower = progId.toLowerCase();
+      
+      // MSXML2.DOMDocument - Manipulação XML
+      if (progIdLower.includes('domdocument') || progIdLower.includes('xmldom') || 
+          progIdLower === 'msxml2.domdocument' || progIdLower === 'msxml.domdocument' ||
+          progIdLower === 'microsoft.xmldom') {
+        console.log('[ActiveX-Emu] Criando XMLDocument');
+        return createXMLDocument();
+      }
+      
+      // MSXML2.XMLHTTP - Requisições HTTP
+      if (progIdLower.includes('xmlhttp') || progIdLower.includes('serverxmlhttp') ||
+          progIdLower === 'msxml2.xmlhttp' || progIdLower === 'microsoft.xmlhttp') {
+        console.log('[ActiveX-Emu] Criando XMLHTTP');
+        return createXMLHTTP();
+      }
+      
+      // Scripting.FileSystemObject - Sistema de arquivos (stub)
+      if (progIdLower.includes('filesystemobject') || progIdLower.includes('scripting.')) {
+        console.log('[ActiveX-Emu] FileSystemObject (stub)');
+        return {
+          FileExists: function() { return false; },
+          FolderExists: function() { return false; },
+          CreateFolder: function() { return true; },
+          DeleteFile: function() { return true; },
+          OpenTextFile: function() { 
+            return { 
+              ReadAll: function() { return ''; },
+              Write: function() {},
+              Close: function() {}
+            }; 
+          }
+        };
+      }
+      
+      // Shell.Application - Stub
+      if (progIdLower.includes('shell.application') || progIdLower.includes('wscript.shell')) {
+        console.log('[ActiveX-Emu] Shell (stub)');
+        return {
+          Run: function() { return 0; },
+          Exec: function() { return { Status: 0 }; },
+          ExpandEnvironmentStrings: function(s) { return s; },
+          RegRead: function() { return ''; },
+          RegWrite: function() { return true; }
+        };
+      }
+      
+      // Default - DVR Control
+      return createDVRControl(null);
+    };
+    window.ActiveXObject.__polyfill = true;
+  }
+  
+  // Interceptar createElement para elementos object
+  var originalCreateElement = document.createElement.bind(document);
+  document.createElement = function(tagName) {
+    var el = originalCreateElement(tagName);
+    
+    if (tagName.toLowerCase() === 'object') {
+      console.log('[ActiveX-Emu] createElement object interceptado');
+      
+      // Adicionar métodos do controle DVR
+      var ctrl = createDVRControl(el);
+      var keys = Object.keys(ctrl);
+      keys.forEach(function(key) {
+        if (key.startsWith('_')) return;
+        if (typeof ctrl[key] === 'function') {
+          el[key] = ctrl[key].bind(ctrl);
+        }
+      });
+      
+      // Simular readyState
+      el.readyState = 4;
+      el.object = el;
+      
+      // Disparar ready após inserção no DOM
+      var originalAppendChild = Element.prototype.appendChild;
+      var checkInsertion = function() {
         if (el.parentNode) {
-          el.parentNode.insertBefore(placeholder, el);
-          el.style.display = 'none';
+          setTimeout(function() {
+            if (typeof el.onreadystatechange === 'function') {
+              try { el.onreadystatechange(); } catch(e) {}
+            }
+          }, 50);
+        }
+      };
+      
+      // Observer para detectar inserção
+      setTimeout(checkInsertion, 100);
+    }
+    
+    return el;
+  };
+  
+  // Interceptar getElementById para retornar objetos ActiveX emulados
+  var originalGetById = document.getElementById.bind(document);
+  document.getElementById = function(id) {
+    var el = originalGetById(id);
+    
+    if (el && el.tagName === 'OBJECT' && !el.dataset.ieProcessed) {
+      processActiveXElement(el);
+    }
+    
+    return el;
+  };
+  
+  // Interceptar try-catch global para suprimir erros de ActiveX
+  window.onerror = function(msg, url, line, col, error) {
+    if (msg && (msg.includes('ActiveX') || msg.includes('automation') || 
+        msg.includes('Object doesn\\'t support') || msg.includes('not defined'))) {
+      console.log('[ActiveX-Emu] Erro suprimido:', msg);
+      return true; // Suprimir erro
+    }
+    return false;
+  };
+  
+  // Processar elementos <object> com CLSID
+  function processActiveXElement(el) {
+    if (el.dataset.ieProcessed) return;
+    el.dataset.ieProcessed = 'true';
+    
+    var classid = el.getAttribute('classid') || '';
+    var match = classid.match(/{?([A-F0-9-]{8,36})}?/i);
+    if (!match) return;
+    
+    var clsid = match[1].toUpperCase();
+    var info = KNOWN_CLSIDS[clsid] || { brand: 'Unknown', type: 'unknown' };
+    
+    console.log('[ActiveX-Emu] Processando:', clsid, info.brand);
+    
+    // Notificar o renderer
+    window.postMessage({ type: 'ACTIVEX_OBJECT_TAG', clsid: clsid }, '*');
+    
+    // Criar controle e aplicar ao elemento
+    var ctrl = createDVRControl(el);
+    
+    // Copiar métodos e propriedades
+    var keys = Object.keys(ctrl);
+    keys.forEach(function(key) {
+      if (key.startsWith('_')) return; // Pular privados
+      if (typeof ctrl[key] === 'function') {
+        el[key] = ctrl[key].bind(ctrl);
+      } else {
+        try {
+          Object.defineProperty(el, key, {
+            get: function() { return ctrl[key]; },
+            set: function(v) { ctrl[key] = v; },
+            configurable: true
+          });
+        } catch(e) {
+          el[key] = ctrl[key];
         }
       }
     });
+    
+    // Garantir que object retorna o próprio elemento
+    el.object = el;
+    
+    // Disparar evento ready
+    setTimeout(function() {
+      el.readyState = 4;
+      if (typeof el.onreadystatechange === 'function') {
+        try { el.onreadystatechange(); } catch(e) {}
+      }
+      var evt = document.createEvent('Event');
+      evt.initEvent('readystatechange', true, true);
+      el.dispatchEvent(evt);
+    }, 100);
   }
-
-  // Observar DOM para novos elementos
-  var observer = new MutationObserver(function() { processObjectTags(); });
+  
+  function scanForActiveX() {
+    var objects = document.querySelectorAll('object[classid], embed[classid]');
+    objects.forEach(processActiveXElement);
+    
+    // Também processar botões e links que podem chamar métodos ActiveX
+    interceptLoginButtons();
+  }
+  
+  // Interceptar botões de login e outros que chamam ActiveX
+  function interceptLoginButtons() {
+    // Encontrar botões de login
+    var buttons = document.querySelectorAll('input[type="button"], input[type="submit"], button, a[href*="javascript"]');
+    
+    buttons.forEach(function(btn) {
+      if (btn.dataset.ieIntercepted) return;
+      btn.dataset.ieIntercepted = 'true';
+      
+      var onclick = btn.getAttribute('onclick') || '';
+      var href = btn.getAttribute('href') || '';
+      var value = (btn.value || btn.textContent || '').toLowerCase();
+      
+      // Detectar se é botão de login
+      var isLoginButton = value.includes('login') || value.includes('entrar') || 
+                          value.includes('acessar') || value.includes('conectar') ||
+                          onclick.includes('Login') || onclick.includes('login');
+      
+      if (isLoginButton || onclick.includes('Login') || href.includes('Login')) {
+        console.log('[ActiveX-Emu] Interceptando botão de login:', btn);
+        
+        // Adicionar nosso handler
+        btn.addEventListener('click', function(e) {
+          console.log('[ActiveX-Emu] Clique no botão de login detectado');
+          
+          // Tentar encontrar campos de usuário e senha
+          var userField = document.querySelector('input[name*="user"], input[name*="User"], input[id*="user"], input[id*="User"], input[name*="name"], input[name*="login"]');
+          var passField = document.querySelector('input[type="password"], input[name*="pass"], input[name*="Pass"], input[id*="pass"]');
+          
+          if (userField && passField) {
+            var username = userField.value || 'admin';
+            var password = passField.value || 'admin';
+            var host = window.location.hostname;
+            
+            console.log('[ActiveX-Emu] Credenciais:', username, '****', 'Host:', host);
+            
+            // Atualizar estado global
+            activeXState.username = username;
+            activeXState.password = password;
+            activeXState.loggedIn = true;
+            
+            // Tentar chamar Login em todos os objetos ActiveX
+            var objects = document.querySelectorAll('object[classid]');
+            objects.forEach(function(obj) {
+              if (typeof obj.Login === 'function') {
+                try {
+                  console.log('[ActiveX-Emu] Chamando Login no objeto');
+                  obj.Login(host, 80, username, password);
+                } catch(e) {
+                  console.log('[ActiveX-Emu] Erro ao chamar Login:', e);
+                }
+              }
+            });
+          }
+          
+          // Permitir que o evento continue (não bloquear)
+        }, true);
+      }
+    });
+    
+    // Interceptar formulários
+    var forms = document.querySelectorAll('form');
+    forms.forEach(function(form) {
+      if (form.dataset.ieIntercepted) return;
+      form.dataset.ieIntercepted = 'true';
+      
+      form.addEventListener('submit', function(e) {
+        console.log('[ActiveX-Emu] Formulário submetido');
+        
+        var userField = form.querySelector('input[name*="user"], input[name*="User"], input[id*="user"], input[name*="name"]');
+        var passField = form.querySelector('input[type="password"]');
+        
+        if (userField && passField) {
+          activeXState.username = userField.value || 'admin';
+          activeXState.password = passField.value || 'admin';
+          activeXState.loggedIn = true;
+          console.log('[ActiveX-Emu] Credenciais capturadas do form');
+        }
+      }, true);
+    });
+  }
+  
+  // Executar após DOM carregado
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', scanForActiveX);
+  } else {
+    setTimeout(scanForActiveX, 50);
+  }
+  
+  // Observer para elementos adicionados dinamicamente
+  var observer = new MutationObserver(function(mutations) {
+    var shouldRescan = false;
+    mutations.forEach(function(m) {
+      m.addedNodes.forEach(function(node) {
+        if (node.nodeType !== 1) return;
+        shouldRescan = true;
+        if (node.matches && node.matches('object[classid], embed[classid]')) {
+          processActiveXElement(node);
+        }
+        var nested = node.querySelectorAll ? node.querySelectorAll('object[classid], embed[classid]') : [];
+        nested.forEach(processActiveXElement);
+      });
+    });
+    // Re-escanear botões quando houver mudanças
+    if (shouldRescan) {
+      setTimeout(interceptLoginButtons, 100);
+    }
+  });
   observer.observe(document.documentElement, { childList: true, subtree: true });
   
-  // Processar elementos existentes
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', processObjectTags);
-  } else {
-    processObjectTags();
-  }
-
-  window.__iePortableActiveXPolyfill = true;
-  console.log('[IE Portable] ActiveX Polyfill ativo');
+  // Interceptar cliques globalmente para capturar cliques em elementos criados via JS
+  document.addEventListener('click', function(e) {
+    var target = e.target;
+    var onclick = target.getAttribute && target.getAttribute('onclick');
+    
+    if (onclick && (onclick.includes('Login') || onclick.includes('login') || onclick.includes('Check'))) {
+      console.log('[ActiveX-Emu] Clique detectado em elemento com onclick:', onclick);
+      
+      // Capturar credenciais
+      var userField = document.querySelector('input[name*="user" i], input[id*="user" i], input[name*="name" i]');
+      var passField = document.querySelector('input[type="password"]');
+      
+      if (userField && passField) {
+        activeXState.username = userField.value || 'admin';
+        activeXState.password = passField.value || 'admin';
+        activeXState.loggedIn = true;
+        console.log('[ActiveX-Emu] Credenciais:', activeXState.username);
+      }
+    }
+  }, true);
+  
+  console.log('[IE Portable] ActiveX Emulator carregado');
 })();
 `;
 
@@ -126,55 +722,8 @@ async function injectActiveXPolyfill(webview) {
   }
 }
 
-// Elementos DOM
-const elements = {
-  urlInput: document.getElementById('url-input'),
-  webview: document.getElementById('webview'),
-  startPage: document.getElementById('start-page'),
-  btnBack: document.getElementById('btn-back'),
-  btnForward: document.getElementById('btn-forward'),
-  btnRefresh: document.getElementById('btn-refresh'),
-  btnStop: document.getElementById('btn-stop'),
-  btnHome: document.getElementById('btn-home'),
-  btnGo: document.getElementById('btn-go'),
-  btnFavorite: document.getElementById('btn-favorite'),
-  btnFavoritesMenu: document.getElementById('btn-favorites-menu'),
-  btnPlugins: document.getElementById('btn-plugins'),
-  btnSettings: document.getElementById('btn-settings'),
-  statusText: document.getElementById('status-text'),
-  statusZone: document.getElementById('status-zone'),
-  securityIndicator: document.getElementById('security-indicator'),
-  ieVersionText: document.getElementById('ie-version-text'),
-  loadingOverlay: document.getElementById('loading-overlay'),
-  quickAccessItems: document.getElementById('quick-access-items'),
-  
-  // Modais
-  favoritesModal: document.getElementById('favorites-modal'),
-  favName: document.getElementById('fav-name'),
-  favUrl: document.getElementById('fav-url'),
-  favSave: document.getElementById('fav-save'),
-  favCancel: document.getElementById('fav-cancel'),
-  
-  settingsModal: document.getElementById('settings-modal'),
-  settingHomepage: document.getElementById('setting-homepage'),
-  settingIEVersion: document.getElementById('setting-ie-version'),
-  settingsSave: document.getElementById('settings-save'),
-  settingsCancel: document.getElementById('settings-cancel'),
-  settingsApply: document.getElementById('settings-apply'),
-  
-  // Painel de favoritos
-  favoritesPanel: document.getElementById('favorites-panel'),
-  favoritesList: document.getElementById('favorites-list'),
-  
-  // Modais de Plugin/Stream
-  pluginModal: document.getElementById('plugin-modal'),
-  pluginName: document.getElementById('plugin-name'),
-  pluginBrand: document.getElementById('plugin-brand'),
-  streamConfigModal: document.getElementById('stream-config-modal'),
-  urlsModal: document.getElementById('urls-modal'),
-  urlsList: document.getElementById('urls-list'),
-  streamPlayerContainer: document.getElementById('stream-player-container')
-};
+// Elementos DOM - inicializados após DOMContentLoaded
+let elements = {};
 
 // Estado da aplicação
 let currentZoom = 1;
@@ -188,40 +737,116 @@ let streamPlayer = null;
 let detectedPluginInfo = null;
 let currentHost = null;
 
+// Função para inicializar referências aos elementos DOM
+function initElements() {
+  elements = {
+    urlInput: document.getElementById('url-input'),
+    webview: document.getElementById('webview'),
+    startPage: document.getElementById('start-page'),
+    btnBack: document.getElementById('btn-back'),
+    btnForward: document.getElementById('btn-forward'),
+    btnRefresh: document.getElementById('btn-refresh'),
+    btnStop: document.getElementById('btn-stop'),
+    btnHome: document.getElementById('btn-home'),
+    btnGo: document.getElementById('btn-go'),
+    btnFavorite: document.getElementById('btn-favorite'),
+    btnFavoritesMenu: document.getElementById('btn-favorites-menu'),
+    btnPlugins: document.getElementById('btn-plugins'),
+    btnSettings: document.getElementById('btn-settings'),
+    statusText: document.getElementById('status-text'),
+    statusZone: document.getElementById('status-zone'),
+    securityIndicator: document.getElementById('security-indicator'),
+    ieVersionText: document.getElementById('ie-version-text'),
+    loadingOverlay: document.getElementById('loading-overlay'),
+    quickAccessItems: document.getElementById('quick-access-items'),
+    
+    // Modais
+    favoritesModal: document.getElementById('favorites-modal'),
+    favName: document.getElementById('fav-name'),
+    favUrl: document.getElementById('fav-url'),
+    favSave: document.getElementById('fav-save'),
+    favCancel: document.getElementById('fav-cancel'),
+    
+    settingsModal: document.getElementById('settings-modal'),
+    settingHomepage: document.getElementById('setting-homepage'),
+    settingIEVersion: document.getElementById('setting-ie-version'),
+    settingsSave: document.getElementById('settings-save'),
+    settingsCancel: document.getElementById('settings-cancel'),
+    settingsApply: document.getElementById('settings-apply'),
+    
+    // Painel de favoritos
+    favoritesPanel: document.getElementById('favorites-panel'),
+    favoritesList: document.getElementById('favorites-list'),
+    
+    // Modais de Plugin/Stream
+    pluginModal: document.getElementById('plugin-modal'),
+    pluginName: document.getElementById('plugin-name'),
+    pluginBrand: document.getElementById('plugin-brand'),
+    streamConfigModal: document.getElementById('stream-config-modal'),
+    urlsModal: document.getElementById('urls-modal'),
+    urlsList: document.getElementById('urls-list'),
+    streamPlayerContainer: document.getElementById('stream-player-container')
+  };
+}
+
 // ============================================
 // Inicialização
 // ============================================
 
 async function init() {
+  console.log('[Renderer] init() chamada');
+  
+  // Inicializar referências aos elementos DOM
+  initElements();
+  console.log('[Renderer] Elementos inicializados:', Object.keys(elements).length, 'elementos');
+  console.log('[Renderer] webview:', elements.webview);
+  console.log('[Renderer] urlInput:', elements.urlInput);
+  
   // Carregar configurações
+  console.log('[Renderer] Carregando configurações...');
   settings = await window.iePortable.getSettings();
+  console.log('[Renderer] Configurações carregadas:', settings);
+  
   elements.ieVersionText.textContent = settings.ieVersion?.toUpperCase() || 'IE11';
+  console.log('[Renderer] IE Version configurada');
   
   // Configurar User-Agent do webview
+  console.log('[Renderer] Obtendo User-Agent...');
   const userAgent = await window.iePortable.getUserAgent();
+  console.log('[Renderer] User-Agent:', userAgent);
   elements.webview.setAttribute('useragent', userAgent);
   
   // Inicializar handlers
+  console.log('[Renderer] Inicializando ActiveXHandler...');
   activeXHandler = new ActiveXHandler();
+  console.log('[Renderer] Inicializando StreamPlayer...');
   streamPlayer = new StreamPlayer(elements.streamPlayerContainer);
   
   // Expor streamPlayer globalmente para callbacks
   window.streamPlayer = streamPlayer;
   
   // Carregar favoritos no quick access
+  console.log('[Renderer] Carregando Quick Access...');
   await loadQuickAccess();
   
   // Configurar event listeners
+  console.log('[Renderer] setupEventListeners...');
   setupEventListeners();
+  console.log('[Renderer] setupIPCListeners...');
   setupIPCListeners();
+  console.log('[Renderer] setupWebviewListeners...');
   setupWebviewListeners();
+  console.log('[Renderer] setupPluginHandlers...');
   setupPluginHandlers();
+  console.log('[Renderer] Todos os handlers configurados');
   
   // Mostrar página inicial
+  console.log('[Renderer] Mostrando página inicial...');
   showStartPage();
   
   // Foco na barra de endereço
   setTimeout(() => elements.urlInput.focus(), 100);
+  console.log('[Renderer] init() concluída');
 }
 
 // ============================================
@@ -828,6 +1453,11 @@ function setupWebviewListeners() {
 
 function setupPluginHandlers() {
   // Botões do modal de plugin
+  document.getElementById('btn-try-webconfig').addEventListener('click', () => {
+    elements.pluginModal.classList.add('hidden');
+    tryWebConfigInterface();
+  });
+  
   document.getElementById('btn-try-stream').addEventListener('click', () => {
     elements.pluginModal.classList.add('hidden');
     tryAutoStream();
@@ -1067,6 +1697,83 @@ function showActiveXDetectedModal(clsid, info) {
   elements.pluginModal.classList.remove('hidden');
   
   console.log('Modal ActiveX exibido para:', clsid, info.brand);
+}
+
+/**
+ * Tenta acessar a interface web de configuração (sem ActiveX)
+ */
+async function tryWebConfigInterface() {
+  if (!currentHost) {
+    updateStatus('Erro: Host não identificado');
+    return;
+  }
+  
+  updateStatus('Buscando interface web alternativa...');
+  
+  // URLs conhecidas de interfaces web que funcionam sem ActiveX
+  const webConfigUrls = [
+    // Hikvision
+    '/doc/page/config.asp',
+    '/doc/page/login.asp', 
+    '/ISAPI/System/capabilities',
+    '/SDK/capabilities',
+    
+    // Dahua
+    '/cgi-bin/configManager.cgi?action=getConfig&name=General',
+    '/RPC2_Login',
+    
+    // Genérico
+    '/cgi-bin/main.cgi',
+    '/cgi-bin/viewer/video.jpg',
+    '/config/index.html',
+    '/web/index.html',
+    '/login.html',
+    '/admin.html',
+    '/index2.html',
+    
+    // ONVIF
+    '/onvif/device_service',
+    
+    // Mobile interfaces (geralmente sem ActiveX)
+    '/mobile.html',
+    '/m/index.html',
+    '/phone/index.html',
+  ];
+  
+  // Adicionar URLs específicas do fabricante detectado
+  if (detectedPluginInfo) {
+    const brand = detectedPluginInfo.brand?.toLowerCase() || '';
+    
+    if (brand.includes('hikvision')) {
+      webConfigUrls.unshift('/doc/page/config.asp', '/doc/page/preview.asp');
+    } else if (brand.includes('dahua')) {
+      webConfigUrls.unshift('/cgi-bin/configManager.cgi?action=getConfig&name=General');
+    } else if (brand.includes('ipega') || brand.includes('qualvision') || brand.includes('tecvoz')) {
+      webConfigUrls.unshift('/Pages/login.htm', '/view2.html', '/Login.htm');
+    }
+  }
+  
+  // Mostrar lista de URLs para o usuário tentar
+  const baseUrl = `http://${currentHost}`;
+  
+  let html = '<div class="urls-container">';
+  html += '<p>Clique em uma URL para tentar acessar:</p>';
+  html += '<div class="urls-list">';
+  
+  webConfigUrls.forEach(path => {
+    const fullUrl = baseUrl + path;
+    html += `<div class="url-item" onclick="navigate('${fullUrl}')">${fullUrl}</div>`;
+  });
+  
+  html += '</div>';
+  html += '<p style="margin-top:15px; font-size:12px; opacity:0.8;">💡 Dica: Se nenhuma funcionar, o DVR pode não ter interface web alternativa. Tente usar um software como IVMS-4200 (Hikvision) ou SmartPSS (Dahua) para acessar as configurações.</p>';
+  html += '</div>';
+  
+  elements.urlsList.innerHTML = html;
+  elements.urlsModal.querySelector('h2').textContent = '🌐 Interfaces Web Alternativas';
+  elements.urlsModal.classList.remove('hidden');
+  
+  updateStatus('Selecione uma interface para tentar');
 }
 
 /**
@@ -1368,4 +2075,13 @@ function escapeHtml(text) {
 // Iniciar
 // ============================================
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', async () => {
+  console.log('[Renderer] DOM carregado, iniciando...');
+  try {
+    await init();
+    console.log('[Renderer] Inicialização concluída');
+  } catch (error) {
+    console.error('[Renderer] ERRO na inicialização:', error);
+    document.body.innerHTML = '<div style="padding:20px;color:red;font-family:Arial;"><h2>Erro ao inicializar</h2><pre>' + error.stack + '</pre></div>';
+  }
+});

@@ -68,6 +68,9 @@ function createWindow() {
   // Carregar interface do navegador
   mainWindow.loadFile(path.join(__dirname, 'renderer/index.html'));
 
+  // Abrir DevTools para debug
+  mainWindow.webContents.openDevTools();
+
   // Salvar tamanho da janela ao fechar
   mainWindow.on('close', () => {
     store.set('windowBounds', mainWindow.getBounds());
@@ -371,6 +374,10 @@ ipcMain.handle('plugin-import', async () => {
 
 ipcMain.handle('plugin-import-path', async (event, filePath) => {
   return pluginManager.importPlugin(filePath);
+});
+
+ipcMain.handle('plugin-scan-folder', async () => {
+  return pluginManager.scanPluginFolderDialog(pluginManagerWindow || mainWindow);
 });
 
 ipcMain.handle('plugin-register', async (event, pluginId) => {

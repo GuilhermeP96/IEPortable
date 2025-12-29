@@ -23,6 +23,9 @@ A Microsoft removeu permanentemente o Internet Explorer do Windows 11, porém mu
 - **🆕 Gerenciador de Plugins**: Sandbox para plugins ActiveX baixados de câmeras/DVRs
 - **🆕 Detecção de CLSID**: Identifica automaticamente fabricantes pelo código ActiveX
 - **🆕 Integração Wine**: Suporte a plugins ActiveX reais no Linux via Wine
+- **🆕 Emulação ActiveX**: Emula objetos ActiveX para interfaces de DVRs (MSXML2, XMLHTTP, etc.)
+- **🆕 Escanear Pasta de Plugins**: Importa plugins de pastas (ex: Program Files)
+- **🆕 Registro Automático**: Registra OCX/DLL automaticamente via regsvr32
 
 ## 🚀 Instalação
 
@@ -85,6 +88,7 @@ Muitos DVRs e câmeras tentam instalar plugins ActiveX (.exe, .cab, .ocx) que s�
 | Hikvision | RTSP | 554 |
 | Dahua | RTSP | 554 |
 | Intelbras | RTSP | 554 |
+| Ipega | RTSP | 554 |
 | Axis | MJPEG/RTSP | 80/554 |
 | Foscam | MJPEG/RTSP | 88/554 |
 | Genéricos | RTSP/MJPEG | 554/80 |
@@ -97,6 +101,10 @@ rtsp://admin:senha@192.168.1.100:554/Streaming/Channels/101
 
 # Dahua/Intelbras
 rtsp://admin:senha@192.168.1.100:554/cam/realmonitor?channel=1&subtype=0
+
+# Ipega (KP-CA Series)
+rtsp://admin:senha@192.168.1.100:554/profile0
+rtsp://admin:senha@192.168.1.100:554/11
 
 # Genérico
 rtsp://admin:senha@192.168.1.100:554/stream1
@@ -127,6 +135,7 @@ O IE Portable inclui um sistema de sandbox para gerenciar plugins ActiveX baixad
 | **Registrar** | Tenta registrar OCX/DLL no sistema (Windows) ou via Wine (Linux) |
 | **Executar** | Inicia instaladores .exe |
 | **Metadados** | Extrai informações como versão, empresa, hash MD5 |
+| **Escanear Pasta** | Importa plugins de diretórios externos (ex: Program Files) |
 | **Notas** | Adicione observações sobre cada plugin |
 
 #### Suporte por Plataforma:
@@ -230,3 +239,15 @@ MIT License - veja [LICENSE](LICENSE) para detalhes.
 ---
 
 **Nota**: Este projeto não é afiliado à Microsoft. Internet Explorer é uma marca registrada da Microsoft Corporation.
+
+## ⚠️ Limitações Conhecidas
+
+Consulte o arquivo [ISSUES.md](ISSUES.md) para a lista completa de problemas conhecidos e limitações.
+
+### Principais Limitações:
+
+1. **Emulação ActiveX Incompleta**: Não é possível emular completamente objetos ActiveX binários em JavaScript. A emulação funciona para algumas interfaces (ex: Tecvoz) mas não para todas.
+
+2. **Plugins de Program Files**: Plugins instalados por .EXE que colocam DLLs em `C:\Program Files` podem não funcionar mesmo após importação, pois dependem de registro COM do Windows.
+
+3. **Visualização de Câmeras**: A visualização de vídeo ao vivo pode não funcionar para alguns fabricantes. Use o VLC com URLs RTSP como alternativa.

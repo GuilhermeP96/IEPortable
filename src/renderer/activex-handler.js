@@ -26,6 +26,27 @@ class ActiveXHandler {
         rtspPort: 554,
         snapshotPath: '/cgi-bin/snapshot.cgi?channel=1',
         rtspPaths: ['/cam/realmonitor?channel=1&subtype=0']
+      },
+      // Ipega - DVRs e câmeras
+      'B6D5419C-4B84-4C47-ACF6-4E5E0C6C1B7D': {
+        brand: 'Ipega',
+        rtspPort: 554,
+        snapshotPath: '/cgi-bin/snapshot.cgi',
+        rtspPaths: ['/profile0', '/profile1', '/11', '/onvif1', '/live/ch00_0']
+      },
+      // Ipega KP-CA Series
+      'B6D5419C': {
+        brand: 'Ipega',
+        rtspPort: 554,
+        snapshotPath: '/cgi-bin/snapshot.cgi',
+        rtspPaths: ['/profile0', '/profile1', '/11', '/onvif1']
+      },
+      // Ipega DVR - CLSID completo detectado
+      'B6D5419C-D381-4687-9CFC-A9E2CD7008F5': {
+        brand: 'Ipega',
+        rtspPort: 554,
+        snapshotPath: '/cgi-bin/snapshot.cgi',
+        rtspPaths: ['/profile0', '/profile1', '/11', '/onvif1', '/live/ch00_0']
       }
     };
 
@@ -52,6 +73,13 @@ class ActiveXHandler {
       'ocx.cab': { brand: 'ActiveX OCX', rtspPort: 554, rtspPath: '/stream1' },
       'activex.cab': { brand: 'ActiveX', rtspPort: 554, rtspPath: '/stream1' },
       'vlcplugin.exe': { brand: 'VLC Plugin', rtspPort: 554, rtspPath: '/stream' },
+      
+      // Ipega
+      'ipega.ocx': { brand: 'Ipega', rtspPort: 554, rtspPath: '/profile0' },
+      'ipega.exe': { brand: 'Ipega', rtspPort: 554, rtspPath: '/profile0' },
+      'ipega.cab': { brand: 'Ipega', rtspPort: 554, rtspPath: '/profile0' },
+      'HWDVRPlugin.ocx': { brand: 'Ipega', rtspPort: 554, rtspPath: '/profile0' },
+      'HWDVRPlugin.exe': { brand: 'Ipega', rtspPort: 554, rtspPath: '/profile0' },
     };
 
     // Extensões que indicam plugins
@@ -117,6 +145,9 @@ class ActiveXHandler {
     if (url.includes('intelbras')) {
       return this.knownPlugins['intelbras.exe'];
     }
+    if (url.includes('ipega') || url.includes('kp-ca')) {
+      return this.knownPlugins['ipega.ocx'];
+    }
     
     return { brand: 'Desconhecido', rtspPort: 554, rtspPath: '/stream1' };
   }
@@ -136,6 +167,12 @@ class ActiveXHandler {
       // Dahua / Intelbras
       '/cam/realmonitor?channel=1&subtype=0',
       '/cam/realmonitor?channel=1&subtype=1',
+      
+      // Ipega / KP-CA Series
+      '/profile0',
+      '/profile1',
+      '/11',
+      '/onvif1',
       
       // ONVIF
       '/onvif/profile1/media.svc/streaming',

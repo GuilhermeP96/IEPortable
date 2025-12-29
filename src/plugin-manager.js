@@ -244,10 +244,57 @@ class PluginManager {
     this.plugins.plugins.push(pluginEntry);
     this.saveRegistry();
 
+    // No Windows, tentar registrar automaticamente se for OCX/DLL
+    if (this.platform === 'win32' && ['.ocx', '.dll'].includes(ext)) {
+      try {
+        console.log(`[PluginManager] Auto-registrando: ${destPath}`);
+        await this.registerPluginFile(destPath);
+        pluginEntry.registered = true;
+        this.saveRegistry();
+        console.log(`[PluginManager] Registrado com sucesso: ${fileInfo.originalName}`);
+      } catch (e) {
+        console.warn(`[PluginManager] Falha ao auto-registrar: ${e.message}`);
+        pluginEntry.registrationError = e.message;
+        this.saveRegistry();
+      }
+    }
+
     return {
       success: true,
       plugin: pluginEntry
     };
+  }
+
+  /**
+   * Registra um arquivo OCX/DLL no Windows
+   */
+  async registerPluginFile(filePath) {
+    return new Promise((resolve, reject) => {
+      if (this.platform !== 'win32') {
+        reject(new Error('Registro nativo apenas no Windows'));
+        return;
+      }
+
+      // Usar regsvr32 silencioso
+      const command = `regsvr32 /s "${filePath}"`;
+      console.log(`[PluginManager] Executando: ${command}`);
+      
+      exec(command, { timeout: 30000 }, (error, stdout, stderr) => {
+        if (error) {
+          // Tentar com privilégios elevados via PowerShell
+          const elevatedCmd = `powershell -Command "Start-Process regsvr32 -ArgumentList '/s', '${filePath.replace(/'/g, "''")}' -Verb RunAs -Wait"`;
+          exec(elevatedCmd, { timeout: 60000 }, (err2, out2, serr2) => {
+            if (err2) {
+              reject(new Error(`Falha ao registrar: ${err2.message}`));
+            } else {
+              resolve({ success: true, elevated: true });
+            }
+          });
+        } else {
+          resolve({ success: true, elevated: false });
+        }
+      });
+    });
   }
 
   /**
@@ -268,6 +315,91 @@ class PluginManager {
     }
 
     return this.importPlugin(result.filePaths[0]);
+  }
+
+  /**
+   * Abre diálogo para selecionar pasta e escaneia por plugins
+   */
+  async scanPluginFolderDialog(parentWindow) {
+    const result = await dialog.showOpenDialog(parentWindow, {
+      title: 'Selecionar Pasta com Plugins ActiveX',
+      properties: ['openDirectory'],
+      message: 'Selecione a pasta raiz onde os plugins estão instalados.\nSubpastas serão escaneadas automaticamente.'
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return { success: false, canceled: true };
+    }
+
+    return this.scanPluginFolder(result.filePaths[0]);
+  }
+
+  /**
+   * Escaneia uma pasta recursivamente por plugins ActiveX
+   */
+  async scanPluginFolder(folderPath, maxDepth = 5) {
+    const extensions = ['.dll', '.ocx', '.ax', '.exe', '.cab', '.msi'];
+    const results = {
+      success: true,
+      imported: 0,
+      skipped: 0,
+      errors: [],
+      files: []
+    };
+
+    const scanDir = async (dirPath, depth) => {
+      if (depth > maxDepth) return;
+
+      try {
+        const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+
+        for (const entry of entries) {
+          const fullPath = path.join(dirPath, entry.name);
+
+          if (entry.isDirectory()) {
+            // Ignorar pastas de sistema conhecidas
+            const ignoreFolders = ['Windows', 'Microsoft.NET', 'Reference Assemblies', 
+                                    'WindowsApps', '$Recycle.Bin', 'System Volume Information'];
+            if (!ignoreFolders.includes(entry.name)) {
+              await scanDir(fullPath, depth + 1);
+            }
+          } else if (entry.isFile()) {
+            const ext = path.extname(entry.name).toLowerCase();
+            if (extensions.includes(ext)) {
+              results.files.push(fullPath);
+            }
+          }
+        }
+      } catch (e) {
+        // Ignorar erros de permissão
+        if (e.code !== 'EPERM' && e.code !== 'EACCES') {
+          console.warn(`Erro ao escanear ${dirPath}:`, e.message);
+        }
+      }
+    };
+
+    console.log(`[PluginManager] Escaneando pasta: ${folderPath}`);
+    await scanDir(folderPath, 0);
+    console.log(`[PluginManager] Encontrados ${results.files.length} arquivos`);
+
+    // Importar cada arquivo encontrado
+    for (const filePath of results.files) {
+      try {
+        const importResult = await this.importPlugin(filePath);
+        if (importResult.success) {
+          results.imported++;
+        } else if (importResult.existingPlugin) {
+          results.skipped++;
+        } else {
+          results.errors.push({ file: filePath, error: importResult.error });
+        }
+      } catch (e) {
+        results.errors.push({ file: filePath, error: e.message });
+      }
+    }
+
+    console.log(`[PluginManager] Importados: ${results.imported}, Ignorados: ${results.skipped}, Erros: ${results.errors.length}`);
+    return results;
   }
 
   /**

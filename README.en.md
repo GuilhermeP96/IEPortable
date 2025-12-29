@@ -23,6 +23,9 @@ Microsoft has permanently removed Internet Explorer from Windows 11, however man
 - **🆕 Plugin Manager**: Sandbox for ActiveX plugins downloaded from cameras/DVRs
 - **🆕 CLSID Detection**: Automatically identifies manufacturers by ActiveX code
 - **🆕 Wine Integration**: Support for real ActiveX plugins on Linux via Wine
+- **🆕 ActiveX Emulation**: Emulates ActiveX objects for DVR interfaces (MSXML2, XMLHTTP, etc.)
+- **🆕 Scan Plugin Folder**: Import plugins from folders (e.g., Program Files)
+- **🆕 Auto-Registration**: Automatically registers OCX/DLL via regsvr32
 
 ## 🚀 Installation
 
@@ -127,6 +130,7 @@ IE Portable includes a sandbox system to manage ActiveX plugins downloaded from 
 | **Register** | Attempts to register OCX/DLL in the system (Windows) or via Wine (Linux) |
 | **Execute** | Starts .exe installers |
 | **Metadata** | Extracts information such as version, company, MD5 hash |
+| **Scan Folder** | Import plugins from external directories (e.g., Program Files) |
 | **Notes** | Add notes about each plugin |
 
 #### Platform Support:
@@ -230,3 +234,15 @@ MIT License - see [LICENSE](LICENSE) for details.
 ---
 
 **Note**: This project is not affiliated with Microsoft. Internet Explorer is a registered trademark of Microsoft Corporation.
+
+## ⚠️ Known Limitations
+
+See the [ISSUES.md](ISSUES.md) file for the complete list of known issues and limitations.
+
+### Main Limitations:
+
+1. **Incomplete ActiveX Emulation**: It's not possible to fully emulate binary ActiveX objects in JavaScript. Emulation works for some interfaces (e.g., Tecvoz) but not all.
+
+2. **Program Files Plugins**: Plugins installed by .EXE that place DLLs in `C:\Program Files` may not work even after import, as they depend on Windows COM registration.
+
+3. **Camera Viewing**: Live video viewing may not work for some manufacturers. Use VLC with RTSP URLs as an alternative.

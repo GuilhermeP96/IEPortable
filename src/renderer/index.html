@@ -97,7 +97,7 @@
     <!-- Página Inicial Personalizada -->
     <div id="start-page" class="hidden">
       <div class="start-content">
-        <img src="../assets/icons/ie-logo.svg" alt="IE Portable" class="logo">
+        <div class="logo-icon">🌐</div>
         <h1>IE Portable</h1>
         <p>Simulador do Internet Explorer para sistemas legados</p>
         
@@ -269,6 +269,13 @@
           <h4>Alternativas:</h4>
           
           <div class="alternative-option">
+            <button id="btn-try-webconfig" class="btn-alternative btn-primary">
+              🌐 Abrir Interface Web
+            </button>
+            <p>Tenta abrir a interface de configuração web do dispositivo (sem ActiveX)</p>
+          </div>
+          
+          <div class="alternative-option">
             <button id="btn-try-stream" class="btn-alternative">
               📹 Tentar Stream Direto
             </button>
@@ -360,6 +367,7 @@
     <!-- Preenchido pelo StreamPlayer -->
   </div>
 
+  <script src="activex-emulator.js"></script>
   <script src="activex-handler.js"></script>
   <script src="stream-player.js"></script>
   <script src="renderer.js"></script>
