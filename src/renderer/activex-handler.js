@@ -13,35 +13,140 @@ class ActiveXHandler {
         snapshotPath: '/onvif/device_service',
         rtspPaths: ['/live/ch00_0', '/cam/realmonitor?channel=1&subtype=0']
       },
-      // Hikvision
+
+      // ==========================================
+      // Hikvision - Todos os CLSIDs conhecidos
+      // ==========================================
       '55F88890-DE29-4E36-B13B-E0774CAC9C5A': {
+        brand: 'Hikvision',
+        rtspPort: 554,
+        snapshotPath: '/ISAPI/Streaming/channels/101/picture',
+        rtspPaths: ['/Streaming/Channels/101', '/Streaming/Channels/102', '/h264/ch1/main/av_stream', '/h264/ch1/sub/av_stream']
+      },
+      '08CF8D24-DA5E-4C0B-B2E3-E72B3C714BAC': {
+        brand: 'Hikvision',
+        rtspPort: 554,
+        snapshotPath: '/ISAPI/Streaming/channels/101/picture',
+        rtspPaths: ['/Streaming/Channels/101', '/Streaming/Channels/102', '/h264/ch1/main/av_stream']
+      },
+      'CCAB80D2-5DCF-44FB-9EAE-0F632B758498': {
         brand: 'Hikvision',
         rtspPort: 554,
         snapshotPath: '/ISAPI/Streaming/channels/101/picture',
         rtspPaths: ['/Streaming/Channels/101', '/h264/ch1/main/av_stream']
       },
-      // Dahua
+      '6263DEED-F971-4C18-AB42-3ABCDE741A89': {
+        brand: 'Hikvision',
+        rtspPort: 554,
+        snapshotPath: '/ISAPI/Streaming/channels/101/picture',
+        rtspPaths: ['/Streaming/Channels/101', '/Streaming/Channels/102', '/h264/ch1/main/av_stream']
+      },
+      // Hikvision Web Components (LocalServiceComponents / iVMS-4200 Web)
+      'A4452457-8E0E-4F87-829C-5DE9E0DD4D76': {
+        brand: 'Hikvision',
+        rtspPort: 554,
+        snapshotPath: '/ISAPI/Streaming/channels/101/picture',
+        rtspPaths: ['/Streaming/Channels/101', '/Streaming/Channels/201', '/h264/ch1/main/av_stream']
+      },
+      // Hikvision VideoWebPlugin
+      '150B57E6-D57E-45D3-A6E8-2A70F874B70C': {
+        brand: 'Hikvision',
+        rtspPort: 554,
+        snapshotPath: '/ISAPI/Streaming/channels/101/picture',
+        rtspPaths: ['/Streaming/Channels/101', '/Streaming/Channels/102']
+      },
+      // Hikvision WebVideoActiveX (web interface moderna)
+      'E7EF736D-B4E6-4A5A-BA94-732D71107808': {
+        brand: 'Hikvision',
+        rtspPort: 554,
+        snapshotPath: '/ISAPI/Streaming/channels/101/picture',
+        rtspPaths: ['/Streaming/Channels/101', '/Streaming/Channels/102', '/h264/ch1/main/av_stream']
+      },
+      // Hikvision WebActiveX (modelos antigos)
+      'D8F7B6D8-3E5A-4B27-8C83-F91BAB946D2A': {
+        brand: 'Hikvision',
+        rtspPort: 554,
+        snapshotPath: '/ISAPI/Streaming/channels/101/picture',
+        rtspPaths: ['/Streaming/Channels/101', '/h264/ch1/main/av_stream']
+      },
+      // Hikvision HCWebSDKPlugin
+      '5E0E2E49-1BAB-4C2A-B4CE-1B4E56AE7B3E': {
+        brand: 'Hikvision',
+        rtspPort: 554,
+        snapshotPath: '/ISAPI/Streaming/channels/101/picture',
+        rtspPaths: ['/Streaming/Channels/101']
+      },
+
+      // ==========================================
+      // Tecvoz - Todos os CLSIDs conhecidos
+      // ==========================================
+      // Tecvoz THK Series (baseado em Dahua)
+      '3BFEDAE3-B170-4C2E-B6AA-E945E3260C70': {
+        brand: 'Tecvoz',
+        rtspPort: 554,
+        snapshotPath: '/cgi-bin/snapshot.cgi?channel=1',
+        rtspPaths: ['/cam/realmonitor?channel=1&subtype=0', '/cam/realmonitor?channel=1&subtype=1', '/live/ch00_0']
+      },
+      // Tecvoz WebPlugin (genérico chinês)
+      'E23B5E25-AA3A-4B2C-8B5A-1A38E93E2C60': {
+        brand: 'Tecvoz',
+        rtspPort: 554,
+        snapshotPath: '/cgi-bin/snapshot.cgi?channel=1',
+        rtspPaths: ['/cam/realmonitor?channel=1&subtype=0', '/live/ch00_0', '/live']
+      },
+      // Tecvoz TW (chipset XM/XiongMai)
+      'C7B43A36-2B41-4B2F-9B10-68A2E3E53D18': {
+        brand: 'Tecvoz',
+        rtspPort: 554,
+        snapshotPath: '/cgi-bin/snapshot.cgi',
+        rtspPaths: ['/user=admin&password=&channel=1&stream=0.sdp', '/cam/realmonitor?channel=1&subtype=0']
+      },
+      // Tecvoz T1 Series (XiongMai/HiSilicon)
+      'A83053A4-6E5A-4F5E-8B3B-8B9F1C50DA32': {
+        brand: 'Tecvoz',
+        rtspPort: 554,
+        snapshotPath: '/cgi-bin/snapshot.cgi',
+        rtspPaths: ['/user=admin&password=&channel=1&stream=0.sdp', '/live/ch00_0', '/onvif1']
+      },
+
+      // ==========================================
+      // Dahua / Intelbras
+      // ==========================================
       '4B3476C6-3A85-4F86-8418-D1130C952B05': {
+        brand: 'Dahua',
+        rtspPort: 554,
+        snapshotPath: '/cgi-bin/snapshot.cgi?channel=1',
+        rtspPaths: ['/cam/realmonitor?channel=1&subtype=0', '/cam/realmonitor?channel=1&subtype=1']
+      },
+      '39B06C8F-91A7-4CAC-8B94-C8B8F26B1A8C': {
         brand: 'Dahua',
         rtspPort: 554,
         snapshotPath: '/cgi-bin/snapshot.cgi?channel=1',
         rtspPaths: ['/cam/realmonitor?channel=1&subtype=0']
       },
-      // Ipega - DVRs e câmeras
+      // Intelbras (OEM Dahua)
+      '99EC681B-C798-4B2A-A57C-98D8E3E96FAA': {
+        brand: 'Intelbras',
+        rtspPort: 554,
+        snapshotPath: '/cgi-bin/snapshot.cgi?channel=1',
+        rtspPaths: ['/cam/realmonitor?channel=1&subtype=0', '/cam/realmonitor?channel=1&subtype=1']
+      },
+
+      // ==========================================
+      // Ipega
+      // ==========================================
       'B6D5419C-4B84-4C47-ACF6-4E5E0C6C1B7D': {
         brand: 'Ipega',
         rtspPort: 554,
         snapshotPath: '/cgi-bin/snapshot.cgi',
         rtspPaths: ['/profile0', '/profile1', '/11', '/onvif1', '/live/ch00_0']
       },
-      // Ipega KP-CA Series
       'B6D5419C': {
         brand: 'Ipega',
         rtspPort: 554,
         snapshotPath: '/cgi-bin/snapshot.cgi',
         rtspPaths: ['/profile0', '/profile1', '/11', '/onvif1']
       },
-      // Ipega DVR - CLSID completo detectado
       'B6D5419C-D381-4687-9CFC-A9E2CD7008F5': {
         brand: 'Ipega',
         rtspPort: 554,
@@ -51,30 +156,59 @@ class ActiveXHandler {
     };
 
     this.knownPlugins = {
+      // ==========================================
       // Hikvision
+      // ==========================================
       'webcomponents.exe': { brand: 'Hikvision', rtspPort: 554, rtspPath: '/Streaming/Channels/101' },
       'LocalServiceComponents.exe': { brand: 'Hikvision', rtspPort: 554, rtspPath: '/Streaming/Channels/101' },
       'WebComponents.exe': { brand: 'Hikvision', rtspPort: 554, rtspPath: '/Streaming/Channels/101' },
+      'HCWebSDKPlugin.exe': { brand: 'Hikvision', rtspPort: 554, rtspPath: '/Streaming/Channels/101' },
+      'VideoWebPlugin.exe': { brand: 'Hikvision', rtspPort: 554, rtspPath: '/Streaming/Channels/101' },
+      'webVideoCtrl.cab': { brand: 'Hikvision', rtspPort: 554, rtspPath: '/Streaming/Channels/101' },
+      'codebase.cab': { brand: 'Hikvision', rtspPort: 554, rtspPath: '/Streaming/Channels/101' },
+      'HikvisionWebPlugin.exe': { brand: 'Hikvision', rtspPort: 554, rtspPath: '/Streaming/Channels/101' },
+      'webplugin.exe': { brand: 'Hikvision', rtspPort: 554, rtspPath: '/Streaming/Channels/101' },
+      'WebComponentsV3.exe': { brand: 'Hikvision', rtspPort: 554, rtspPath: '/Streaming/Channels/101' },
       
-      // Dahua
-      'webplugin.exe': { brand: 'Dahua', rtspPort: 554, rtspPath: '/cam/realmonitor?channel=1&subtype=0' },
+      // ==========================================
+      // Tecvoz
+      // ==========================================
+      'tecvoz.ocx': { brand: 'Tecvoz', rtspPort: 554, rtspPath: '/cam/realmonitor?channel=1&subtype=0' },
+      'tecvoz.exe': { brand: 'Tecvoz', rtspPort: 554, rtspPath: '/cam/realmonitor?channel=1&subtype=0' },
+      'tecvoz.cab': { brand: 'Tecvoz', rtspPort: 554, rtspPath: '/cam/realmonitor?channel=1&subtype=0' },
+      'TecVozWebPlugin.exe': { brand: 'Tecvoz', rtspPort: 554, rtspPath: '/cam/realmonitor?channel=1&subtype=0' },
+      'TecvozPlugin.ocx': { brand: 'Tecvoz', rtspPort: 554, rtspPath: '/cam/realmonitor?channel=1&subtype=0' },
+      'TVActivex.ocx': { brand: 'Tecvoz', rtspPort: 554, rtspPath: '/cam/realmonitor?channel=1&subtype=0' },
+      'TVWebPlugin.exe': { brand: 'Tecvoz', rtspPort: 554, rtspPath: '/cam/realmonitor?channel=1&subtype=0' },
+      
+      // ==========================================
+      // Dahua / Intelbras
+      // ==========================================
       'DahuaWeb.exe': { brand: 'Dahua', rtspPort: 554, rtspPath: '/cam/realmonitor?channel=1&subtype=0' },
-      
-      // Intelbras (usa Dahua)
+      'DahuaPlugin.exe': { brand: 'Dahua', rtspPort: 554, rtspPath: '/cam/realmonitor?channel=1&subtype=0' },
+      'DHWebPlugin.exe': { brand: 'Dahua', rtspPort: 554, rtspPath: '/cam/realmonitor?channel=1&subtype=0' },
       'intelbras.exe': { brand: 'Intelbras', rtspPort: 554, rtspPath: '/cam/realmonitor?channel=1&subtype=0' },
+      'IntelbrasPlugin.exe': { brand: 'Intelbras', rtspPort: 554, rtspPath: '/cam/realmonitor?channel=1&subtype=0' },
       
-      // Qualvision / Tecvoz
+      // ==========================================
+      // Qualvision
+      // ==========================================
       'qualvision.ocx': { brand: 'Qualvision', rtspPort: 554, rtspPath: '/live/ch00_0' },
-      'tecvoz.ocx': { brand: 'Tecvoz', rtspPort: 554, rtspPath: '/live/ch00_0' },
       
-      // DVRs genéricos
+      // ==========================================
+      // DVRs genéricos / XiongMai / HiSilicon
+      // ==========================================
       'npplugin.exe': { brand: 'Genérico', rtspPort: 554, rtspPath: '/live/ch00_0' },
       'WebPlugin.exe': { brand: 'Genérico', rtspPort: 554, rtspPath: '/live/ch00_0' },
       'ocx.cab': { brand: 'ActiveX OCX', rtspPort: 554, rtspPath: '/stream1' },
       'activex.cab': { brand: 'ActiveX', rtspPort: 554, rtspPath: '/stream1' },
       'vlcplugin.exe': { brand: 'VLC Plugin', rtspPort: 554, rtspPath: '/stream' },
+      'XMPlugin.exe': { brand: 'XiongMai', rtspPort: 554, rtspPath: '/user=admin&password=&channel=1&stream=0.sdp' },
+      'XMeye.exe': { brand: 'XiongMai/XMEye', rtspPort: 554, rtspPath: '/user=admin&password=&channel=1&stream=0.sdp' },
       
+      // ==========================================
       // Ipega
+      // ==========================================
       'ipega.ocx': { brand: 'Ipega', rtspPort: 554, rtspPath: '/profile0' },
       'ipega.exe': { brand: 'Ipega', rtspPort: 554, rtspPath: '/profile0' },
       'ipega.cab': { brand: 'Ipega', rtspPort: 554, rtspPath: '/profile0' },
@@ -136,17 +270,23 @@ class ActiveXHandler {
     }
     
     // Tenta identificar pela URL
-    if (url.includes('hikvision') || url.includes('hik')) {
+    if (url.includes('hikvision') || url.includes('hik') || url.includes('webcomponents') || url.includes('VideoWebPlugin') || url.includes('HCWebSDK') || url.includes('LocalServiceComponents')) {
       return this.knownPlugins['webcomponents.exe'];
     }
-    if (url.includes('dahua')) {
-      return this.knownPlugins['webplugin.exe'];
+    if (url.includes('tecvoz') || url.includes('tvweb') || url.includes('TVActivex')) {
+      return this.knownPlugins['tecvoz.ocx'];
+    }
+    if (url.includes('dahua') || url.includes('dhweb')) {
+      return this.knownPlugins['DahuaWeb.exe'];
     }
     if (url.includes('intelbras')) {
       return this.knownPlugins['intelbras.exe'];
     }
     if (url.includes('ipega') || url.includes('kp-ca')) {
       return this.knownPlugins['ipega.ocx'];
+    }
+    if (url.includes('xiongmai') || url.includes('xmeye') || url.includes('netsurveillance')) {
+      return this.knownPlugins['XMPlugin.exe'];
     }
     
     return { brand: 'Desconhecido', rtspPort: 554, rtspPath: '/stream1' };
