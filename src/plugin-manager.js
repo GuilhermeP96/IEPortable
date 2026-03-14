@@ -482,11 +482,16 @@ class PluginManager {
 
     const logFile = path.join(this.logsDir, `register_${pluginId}_${Date.now()}.log`);
 
+    // No Windows, copiar DLLs de dependência do mesmo diretório
+    if (this.platform === 'win32') {
+      await this.copyDependencies(plugin);
+    }
+
     return new Promise((resolve, reject) => {
       let command;
       
       if (this.platform === 'win32') {
-        // Windows nativo
+        // Windows nativo - tentar registrar
         command = `regsvr32 /s "${plugin.sandboxPath}"`;
       } else if (this.hasWine) {
         // Via Wine
@@ -496,24 +501,100 @@ class PluginManager {
         return;
       }
 
-      exec(command, (error, stdout, stderr) => {
+      exec(command, { timeout: 30000 }, (error, stdout, stderr) => {
         const log = `Command: ${command}\nStdout: ${stdout}\nStderr: ${stderr}\nError: ${error || 'none'}`;
-        fs.writeFileSync(logFile, log);
+        
+        if (error && this.platform === 'win32') {
+          // Tentar com privilégios elevados via PowerShell
+          const safePath = plugin.sandboxPath.replace(/'/g, "''");
+          const elevatedCmd = `powershell -Command "Start-Process regsvr32 -ArgumentList '/s', '${safePath}' -Verb RunAs -Wait -PassThru | ForEach-Object { $_.ExitCode }"`;
+          
+          exec(elevatedCmd, { timeout: 60000 }, (err2, out2, serr2) => {
+            const fullLog = `${log}\n\nElevated attempt:\nCommand: ${elevatedCmd}\nStdout: ${out2}\nStderr: ${serr2}\nError: ${err2 || 'none'}`;
+            fs.writeFileSync(logFile, fullLog);
 
-        if (error) {
+            if (err2) {
+              plugin.registered = false;
+              plugin.registrationError = `Falha ao registrar (mesmo com elevação): ${err2.message}`;
+              this.saveRegistry();
+              reject(new Error(plugin.registrationError));
+            } else {
+              plugin.registered = true;
+              plugin.registrationError = null;
+              plugin.registrationDate = new Date().toISOString();
+              this.saveRegistry();
+              resolve({ success: true, logFile, elevated: true });
+            }
+          });
+        } else if (error) {
+          fs.writeFileSync(logFile, log);
           plugin.registered = false;
           plugin.registrationError = error.message;
           this.saveRegistry();
           reject(new Error(`Falha ao registrar: ${error.message}`));
         } else {
+          fs.writeFileSync(logFile, log);
           plugin.registered = true;
           plugin.registrationError = null;
           plugin.registrationDate = new Date().toISOString();
           this.saveRegistry();
-          resolve({ success: true, logFile });
+          resolve({ success: true, logFile, elevated: false });
         }
       });
     });
+  }
+
+  /**
+   * Copia DLLs de dependência conhecidas para o mesmo diretório do plugin
+   */
+  async copyDependencies(plugin) {
+    // Mapeia plugins para suas DLLs de dependência conhecidas
+    const depMap = {
+      'HCNetSDK.dll': ['HCAlarm.dll', 'HCCore.dll', 'HCCoreDevCfg.dll', 'HCDisplay.dll',
+                         'HCGeneralCfgMgr.dll', 'HCIndustry.dll', 'HCPlayBack.dll',
+                         'HCPreview.dll', 'HCVoiceTalk.dll', 'PlayCtrl.dll', 'SuperRender.dll'],
+      'IVMSWebClient.ocx': ['HCNetSDK.dll', 'PlayCtrl.dll', 'HCCore.dll'],
+      'TecvozPlugin.ocx': ['dhplay.dll', 'dhnetsdk.dll', 'dhconfigsdk.dll'],
+      'TVActivex.ocx': ['dhplay.dll', 'dhnetsdk.dll'],
+      'DahuaWebPlugin.ocx': ['dhplay.dll', 'dhnetsdk.dll', 'dhconfigsdk.dll'],
+      'NetSurveillance.ocx': ['netsdk.dll', 'dhplay.dll'],
+    };
+
+    const pluginName = path.basename(plugin.sandboxPath);
+    const deps = depMap[pluginName];
+    if (!deps) return;
+
+    const pluginDir = path.dirname(plugin.sandboxPath);
+    
+    // Procurar dependências em caminhos comuns
+    const searchDirs = [
+      path.dirname(plugin.sourceUrl || ''),  // Diretório original
+      ...this.getKnownPluginPaths()
+        .filter(p => fs.existsSync(path.dirname(p.path)))
+        .map(p => path.dirname(p.path)),
+      path.join(process.env['ProgramFiles(x86)'] || '', 'HCNetSDK'),
+      path.join(process.env['ProgramFiles(x86)'] || '', 'Hikvision', 'LocalServiceComponents'),
+      path.join(process.env['ProgramFiles(x86)'] || '', 'Dahua'),
+      path.join(process.env['ProgramFiles(x86)'] || '', 'TecVoz'),
+    ].filter(Boolean);
+
+    for (const dep of deps) {
+      const destPath = path.join(pluginDir, dep);
+      if (fs.existsSync(destPath)) continue; // Já existe
+
+      for (const dir of searchDirs) {
+        const srcPath = path.join(dir, dep);
+        if (fs.existsSync(srcPath)) {
+          try {
+            fs.copyFileSync(srcPath, destPath);
+            console.log(`[PluginManager] Copiada dependência: ${dep} -> ${destPath}`);
+          } catch (e) {
+            console.warn(`[PluginManager] Falha ao copiar dependência ${dep}: ${e.message}`);
+          }
+          break;
+        }
+      }
+    }
   }
 
   /**
@@ -733,44 +814,139 @@ class PluginManager {
   }
 
   /**
-   * Escaneia plugins no Windows nativo (registro)
+   * Escaneia plugins no Windows nativo (registro + caminhos conhecidos)
    */
   async scanWindowsInstalledPlugins() {
-    return new Promise((resolve) => {
-      exec('reg query "HKEY_CLASSES_ROOT\\CLSID" /s /f "InprocServer32"', (error, stdout) => {
-        if (error) {
-          resolve({ success: false, error: error.message });
-          return;
+    const results = {
+      success: true,
+      registeredClsids: {},
+      knownPlugins: [],
+      summary: { registeredClsids: 0, knownPluginsFound: 0 }
+    };
+
+    // 1) Verificar CLSIDs conhecidos de câmeras no registro
+    const knownClsids = [
+      // Hikvision
+      '55F88890-DE29-4E36-B13B-E0774CAC9C5A',
+      '08CF8D24-DA5E-4C0B-B2E3-E72B3C714BAC',
+      'CCAB80D2-5DCF-44FB-9EAE-0F632B758498',
+      '6263DEED-F971-4C18-AB42-3ABCDE741A89',
+      'A4452457-8E0E-4F87-829C-5DE9E0DD4D76',
+      '150B57E6-A7C8-11D4-A160-0050DA6C1F67',
+      'D8F7B6D8-2A2B-11D6-A31E-00E0290378F4',
+      '5E0E2E49-B832-4394-B4E0-B4A8F1B3C6C3',
+      // Tecvoz / Dahua
+      '3BFEDAE3-F790-4F4E-9A5C-7E73A1B13C94',
+      'E23B5E25-4530-11D2-BC56-00A0C90630B1',
+      'C7B43A36-1D5F-4C4E-A5A5-3A1B2C3D4E5F',
+      'A83053A4-B1A5-4C44-A6B7-D8C9E0F1A2B3',
+      // Intelbras
+      '99EC681B-A53F-4720-A21B-B1C78D8A3946',
+      // Qualvision
+      'E0DA039D-992F-4187-A105-C699A71F5F06',
+    ];
+
+    for (const clsid of knownClsids) {
+      try {
+        const check = await this.checkClsidWindows(clsid);
+        if (check.available) {
+          results.registeredClsids[clsid] = check.info;
         }
+      } catch (e) { /* ignorar */ }
+    }
+    results.summary.registeredClsids = Object.keys(results.registeredClsids).length;
 
-        const clsids = {};
-        const lines = stdout.split('\n');
-        let currentClsid = null;
-
-        for (const line of lines) {
-          const clsidMatch = line.match(/CLSID\\{([A-F0-9-]+)}/i);
-          if (clsidMatch) {
-            currentClsid = clsidMatch[1].toUpperCase();
-          }
-          
-          if (currentClsid && line.includes('REG_SZ')) {
-            const dllMatch = line.match(/REG_SZ\s+(.+\.(?:dll|ocx))/i);
-            if (dllMatch) {
-              clsids[currentClsid] = {
-                clsid: currentClsid,
-                inprocServer: dllMatch[1].trim()
-              };
-            }
-          }
-        }
-
-        resolve({
-          success: true,
-          registeredClsids: clsids,
-          summary: { registeredClsids: Object.keys(clsids).length }
+    // 2) Verificar caminhos de instalação conhecidos
+    const knownPaths = this.getKnownPluginPaths();
+    for (const entry of knownPaths) {
+      if (fs.existsSync(entry.path)) {
+        results.knownPlugins.push({
+          brand: entry.brand,
+          name: entry.name,
+          path: entry.path,
+          type: entry.type
         });
-      });
-    });
+      }
+    }
+    results.summary.knownPluginsFound = results.knownPlugins.length;
+
+    return results;
+  }
+
+  /**
+   * Retorna caminhos de instalação conhecidos de plugins de câmera
+   */
+  getKnownPluginPaths() {
+    const pf86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+    const pf = process.env['ProgramFiles'] || 'C:\\Program Files';
+
+    return [
+      // Hikvision
+      { brand: 'Hikvision', name: 'HCWebSDKPlugin', type: 'exe',
+        path: path.join(pf86, 'HCWebSDKPlugin', 'HCWebSDKPlugin.exe') },
+      { brand: 'Hikvision', name: 'Web Components', type: 'ocx',
+        path: path.join(pf86, 'Hikvision', 'iVMS-4200 Web Components', 'IVMSWebClient.ocx') },
+      { brand: 'Hikvision', name: 'VideoWebPlugin', type: 'exe',
+        path: path.join(pf86, 'VideoWebPlugin', 'VideoWebPlugin.exe') },
+      { brand: 'Hikvision', name: 'webVideoCtrl', type: 'ocx',
+        path: path.join(pf86, 'WebPlayer', 'npWebVideoCtrl.dll') },
+      { brand: 'Hikvision', name: 'LocalServiceComponents', type: 'exe',
+        path: path.join(pf86, 'Hikvision', 'LocalServiceComponents', 'LocalService.exe') },
+      { brand: 'Hikvision', name: 'HCNetSDK', type: 'dll',
+        path: path.join(pf86, 'HCNetSDK', 'HCNetSDK.dll') },
+      // Tecvoz
+      { brand: 'Tecvoz', name: 'TecVozWebPlugin', type: 'exe',
+        path: path.join(pf86, 'TecVoz', 'TecVozWebPlugin.exe') },
+      { brand: 'Tecvoz', name: 'TecvozPlugin.ocx', type: 'ocx',
+        path: path.join(pf86, 'TecVoz', 'TecvozPlugin.ocx') },
+      { brand: 'Tecvoz', name: 'TVActivex.ocx', type: 'ocx',
+        path: path.join(pf86, 'TecVoz', 'TVActivex.ocx') },
+      // Intelbras
+      { brand: 'Intelbras', name: 'Intelbras Web Plugin', type: 'exe',
+        path: path.join(pf86, 'Intelbras', 'WebPlugin', 'IntelBrasWebPlugin.exe') },
+      { brand: 'Intelbras', name: 'IVS Client Web', type: 'ocx',
+        path: path.join(pf86, 'Intelbras', 'IVS Client Web', 'IVSClientWeb.ocx') },
+      // Dahua
+      { brand: 'Dahua', name: 'Dahua Web Plugin', type: 'exe',
+        path: path.join(pf86, 'Dahua', 'DahuaWebPlugin', 'DahuaWebPlugin.exe') },
+      { brand: 'Dahua', name: 'WebPlugin.ocx', type: 'ocx',
+        path: path.join(pf86, 'Dahua', 'WebPlugin.ocx') },
+      // XiongMai / CMS
+      { brand: 'XiongMai', name: 'XMEye ActiveX', type: 'ocx',
+        path: path.join(pf86, 'XMEye', 'XMEyeActiveX.ocx') },
+      { brand: 'XiongMai', name: 'NetSurveillance ActiveX', type: 'ocx',
+        path: path.join(pf86, 'NetSurveillance', 'NetSurveillance.ocx') },
+    ];
+  }
+
+  /**
+   * Auto-importa plugins encontrados em caminhos de instalação conhecidos
+   * para a sandbox e os registra
+   */
+  async autoImportKnownPlugins() {
+    const knownPaths = this.getKnownPluginPaths();
+    const imported = [];
+
+    for (const entry of knownPaths) {
+      if (fs.existsSync(entry.path)) {
+        // Verificar se já foi importado
+        const alreadyImported = this.plugins.plugins.some(
+          p => p.originalName === path.basename(entry.path)
+        );
+        if (alreadyImported) continue;
+
+        try {
+          const result = await this.importPlugin(entry.path);
+          if (result.success) {
+            imported.push({ brand: entry.brand, name: entry.name, path: entry.path });
+          }
+        } catch (e) {
+          console.warn(`[PluginManager] Falha ao importar ${entry.name}: ${e.message}`);
+        }
+      }
+    }
+
+    return { success: true, imported, count: imported.length };
   }
 
   /**

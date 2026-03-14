@@ -3,6 +3,7 @@ const path = require('path');
 const Store = require('electron-store');
 const PluginManager = require('./plugin-manager');
 const WineManager = require('./wine-manager');
+const RtspProxy = require('./rtsp-proxy');
 
 // Configurações persistentes
 const store = new Store({
@@ -22,6 +23,9 @@ let pluginManagerWindow = null;
 
 // Gerenciador de Wine
 let wineManager = null;
+
+// Proxy RTSP para visualização de câmeras
+let rtspProxy = null;
 
 // User-Agents do Internet Explorer
 const USER_AGENTS = {
@@ -48,6 +52,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: false, // Necessário para preload usar fs/path (carregar polyfill)
       preload: path.join(__dirname, 'preload.js'),
       webviewTag: true,
       plugins: true,
@@ -68,8 +73,10 @@ function createWindow() {
   // Carregar interface do navegador
   mainWindow.loadFile(path.join(__dirname, 'renderer/index.html'));
 
-  // Abrir DevTools para debug
-  mainWindow.webContents.openDevTools();
+  // Abrir DevTools apenas em desenvolvimento
+  if (process.argv.includes('--dev') || !app.isPackaged) {
+    mainWindow.webContents.openDevTools();
+  }
 
   // Salvar tamanho da janela ao fechar
   mainWindow.on('close', () => {
@@ -482,6 +489,46 @@ ipcMain.handle('clear-plugin-scan-cache', () => {
   return { success: true };
 });
 
+// ============================================
+// IPC Handlers para RTSP Proxy
+// ============================================
+
+ipcMain.handle('rtsp-proxy-status', () => {
+  if (!rtspProxy) return { available: false };
+  return rtspProxy.getStatus();
+});
+
+ipcMain.handle('rtsp-start-hls', async (event, rtspUrl, username, password) => {
+  if (!rtspProxy) return { success: false, error: 'RTSP Proxy não inicializado' };
+  return rtspProxy.startRtspToHls(rtspUrl, username, password);
+});
+
+ipcMain.handle('rtsp-start-mjpeg', async (event, rtspUrl, username, password) => {
+  return rtspProxy.startRtspToMjpeg(rtspUrl, username, password);
+});
+
+ipcMain.handle('rtsp-stop-stream', (event, streamId) => {
+  if (!rtspProxy) return;
+  rtspProxy.stopStream(streamId);
+  return { success: true };
+});
+
+ipcMain.handle('rtsp-stop-all', () => {
+  if (!rtspProxy) return;
+  rtspProxy.stopAll();
+  return { success: true };
+});
+
+ipcMain.handle('rtsp-test-url', async (event, rtspUrl, username, password) => {
+  if (!rtspProxy) return { success: false, error: 'RTSP Proxy não inicializado' };
+  return rtspProxy.testRtspUrl(rtspUrl, username, password);
+});
+
+ipcMain.handle('rtsp-find-working-url', async (event, host, username, password, brand) => {
+  if (!rtspProxy) return { success: false, error: 'RTSP Proxy não inicializado' };
+  return rtspProxy.findWorkingRtspUrl(host, username, password, brand);
+});
+
 ipcMain.handle('auto-register-wine-plugins', async (event) => {
   return pluginManager.autoRegisterWinePlugins((progress) => {
     // Enviar progresso para a janela
@@ -489,6 +536,10 @@ ipcMain.handle('auto-register-wine-plugins', async (event) => {
       pluginManagerWindow.webContents.send('wine-register-progress', progress);
     }
   });
+});
+
+ipcMain.handle('auto-import-known-plugins', async () => {
+  return pluginManager.autoImportKnownPlugins();
 });
 
 ipcMain.handle('register-wine-file', async (event, filePath) => {
@@ -572,6 +623,9 @@ app.whenReady().then(() => {
   // Inicializar gerenciador de Wine
   wineManager = new WineManager();
   
+  // Inicializar proxy RTSP
+  rtspProxy = new RtspProxy();
+  
   createWindow();
 
   app.on('activate', () => {
@@ -584,6 +638,13 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
+  }
+});
+
+// Limpar recursos ao sair
+app.on('before-quit', () => {
+  if (rtspProxy) {
+    rtspProxy.destroy();
   }
 });
 

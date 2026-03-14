@@ -1,7 +1,22 @@
 const { contextBridge, ipcRenderer } = require('electron');
+const path = require('path');
+const fs = require('fs');
+
+// Ler o polyfill ActiveX de arquivo no startup (evita template literal escaping)
+let _polyfillScript = '';
+try {
+  const polyfillPath = path.join(__dirname, 'renderer', 'activex-polyfill-inject.js');
+  _polyfillScript = fs.readFileSync(polyfillPath, 'utf8');
+  console.log('[Preload] ActiveX polyfill carregado:', _polyfillScript.length, 'bytes');
+} catch(e) {
+  console.error('[Preload] Erro ao carregar polyfill:', e.message);
+}
 
 // Expor APIs seguras para o renderer
 contextBridge.exposeInMainWorld('iePortable', {
+  // Polyfill ActiveX (conteúdo do arquivo JS para injeção no webview)
+  getActiveXPolyfill: () => _polyfillScript,
+  
   // Configurações
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
@@ -59,4 +74,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Receber notificações do main process
   onActiveXDetected: (callback) => ipcRenderer.on('activex-detected', (_, data) => callback(data)),
   onPluginAvailable: (callback) => ipcRenderer.on('plugin-available', (_, data) => callback(data)),
+
+  // RTSP Proxy (conversão RTSP -> HLS/MJPEG para câmeras)
+  rtspProxyStatus: () => ipcRenderer.invoke('rtsp-proxy-status'),
+  rtspStartHls: (rtspUrl, username, password) => ipcRenderer.invoke('rtsp-start-hls', rtspUrl, username, password),
+  rtspStartMjpeg: (rtspUrl, username, password) => ipcRenderer.invoke('rtsp-start-mjpeg', rtspUrl, username, password),
+  rtspStopStream: (streamId) => ipcRenderer.invoke('rtsp-stop-stream', streamId),
+  rtspStopAll: () => ipcRenderer.invoke('rtsp-stop-all'),
+  rtspTestUrl: (rtspUrl, username, password) => ipcRenderer.invoke('rtsp-test-url', rtspUrl, username, password),
+  rtspFindWorkingUrl: (host, username, password, brand) => ipcRenderer.invoke('rtsp-find-working-url', host, username, password, brand),
 });
