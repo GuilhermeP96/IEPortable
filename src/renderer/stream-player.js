@@ -217,15 +217,48 @@ class StreamPlayer {
   }
 
   /**
-   * Reproduz stream RTSP via proxy WebSocket
+   * Reproduz stream RTSP via proxy ffmpeg (HLS ou MJPEG)
    */
   async playRtsp(url, username, password) {
     // RTSP não funciona diretamente no browser
-    // Precisamos de um proxy ou conversão
-    
-    this.showOverlay('RTSP requer conversão...');
-    
-    // Mostra instruções para o usuário
+    // Usa o proxy integrado via main process (ffmpeg)
+
+    this.showOverlay('Conectando via proxy RTSP...');
+
+    try {
+      // Verificar se o proxy está disponível
+      if (window.electronAPI && window.electronAPI.rtspProxyStatus) {
+        const status = await window.electronAPI.rtspProxyStatus();
+        if (status.available) {
+          // Tentar HLS primeiro (melhor qualidade)
+          const hlsResult = await window.electronAPI.rtspStartHls(url, username, password);
+          if (hlsResult.success) {
+            this.currentStreamId = hlsResult.streamId;
+            this.setStatus('Convertendo RTSP→HLS...', 'info');
+            await this.playHls(hlsResult.hlsUrl);
+            this.setStatus('RTSP Ativo (via HLS)', 'success');
+            this.hideOverlay();
+            return;
+          }
+          
+          // Fallback para MJPEG
+          const mjpegResult = await window.electronAPI.rtspStartMjpeg(url, username, password);
+          if (mjpegResult.success) {
+            this.currentStreamId = mjpegResult.streamId;
+            await this.playMjpeg(mjpegResult.mjpegUrl);
+            this.setStatus('RTSP Ativo (via MJPEG)', 'success');
+            return;
+          }
+
+          // Ambos falharam
+          console.warn('[StreamPlayer] Proxy RTSP falhou:', hlsResult.error);
+        }
+      }
+    } catch (e) {
+      console.warn('[StreamPlayer] Erro no proxy RTSP:', e.message);
+    }
+
+    // Fallback: mostrar instruções manuais
     this.showRtspInstructions(url, username, password);
   }
 
@@ -306,26 +339,33 @@ class StreamPlayer {
   }
 
   /**
-   * Inicia conversor RTSP -> WebSocket
+   * Inicia conversor RTSP -> HLS/MJPEG via proxy integrado
    */
   async startConverter(rtspUrl, username, password) {
-    // Esta função seria implementada com um servidor local
-    // que usa ffmpeg para converter RTSP para WebSocket/HLS
-    
     this.showOverlay('Iniciando conversão com ffmpeg...');
     
     try {
-      // Envia para o main process iniciar a conversão
-      if (window.iePortable && window.iePortable.startRtspProxy) {
-        const result = await window.iePortable.startRtspProxy(rtspUrl, username, password);
+      if (window.electronAPI && window.electronAPI.rtspStartHls) {
+        const result = await window.electronAPI.rtspStartHls(rtspUrl, username, password);
         if (result.success) {
-          // Conecta ao stream convertido
+          this.currentStreamId = result.streamId;
           await this.playHls(result.hlsUrl);
-        } else {
-          throw new Error(result.error);
+          this.setStatus('RTSP Ativo (via HLS)', 'success');
+          return;
         }
+        
+        // Tentar MJPEG como fallback
+        const mjpegResult = await window.electronAPI.rtspStartMjpeg(rtspUrl, username, password);
+        if (mjpegResult.success) {
+          this.currentStreamId = mjpegResult.streamId;
+          await this.playMjpeg(mjpegResult.mjpegUrl);
+          this.setStatus('RTSP Ativo (via MJPEG)', 'success');
+          return;
+        }
+
+        throw new Error(result.error || 'Falha na conversão');
       } else {
-        throw new Error('Conversor não disponível. Instale o ffmpeg.');
+        throw new Error('Proxy RTSP não disponível. Verifique se o ffmpeg está instalado.');
       }
     } catch (error) {
       this.handleError('Falha na conversão: ' + error.message);
@@ -373,6 +413,12 @@ class StreamPlayer {
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
       this.refreshInterval = null;
+    }
+    
+    // Parar stream do proxy RTSP se ativo
+    if (this.currentStreamId && window.electronAPI && window.electronAPI.rtspStopStream) {
+      window.electronAPI.rtspStopStream(this.currentStreamId).catch(() => {});
+      this.currentStreamId = null;
     }
     
     this.video.pause();

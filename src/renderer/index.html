@@ -362,6 +362,53 @@
     </div>
   </div>
 
+  <!-- Modal de Credenciais RTSP para Preview -->
+  <div id="rtsp-credentials-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>📹 Configurar Stream de Câmeras</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom:12px;color:#555;">
+          A página de preview foi detectada. Configure as credenciais RTSP para visualizar as câmeras:
+        </p>
+        <div class="form-group">
+          <label for="rtsp-host">Host do DVR:</label>
+          <input type="text" id="rtsp-host" placeholder="ex: 192.168.1.100">
+        </div>
+        <div class="form-group">
+          <label for="rtsp-port">Porta RTSP:</label>
+          <input type="number" id="rtsp-port" value="554" placeholder="554">
+        </div>
+        <div class="form-group">
+          <label for="rtsp-user">Usuário:</label>
+          <input type="text" id="rtsp-user" value="admin" placeholder="admin">
+        </div>
+        <div class="form-group">
+          <label for="rtsp-pass">Senha:</label>
+          <input type="password" id="rtsp-pass" placeholder="senha do DVR">
+        </div>
+        <div class="form-group">
+          <label for="rtsp-channels">Quantidade de canais:</label>
+          <input type="number" id="rtsp-channels" value="4" min="1" max="64" placeholder="4">
+        </div>
+        <div class="form-group">
+          <label for="rtsp-quality">Qualidade:</label>
+          <select id="rtsp-quality">
+            <option value="sub">Sub-stream (mais leve)</option>
+            <option value="main">Main-stream (maior qualidade)</option>
+          </select>
+        </div>
+        <div id="rtsp-status-msg" style="display:none;padding:8px 12px;border-radius:4px;margin-top:8px;font-size:13px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="rtsp-connect" class="btn-primary">▶ Conectar Câmeras</button>
+        <button id="rtsp-cancel" class="btn-secondary">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Container do Player de Stream -->
   <div id="stream-player-container" style="display: none;">
     <!-- Preenchido pelo StreamPlayer -->
