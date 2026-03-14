@@ -2,716 +2,25 @@
 // IE Portable - Renderer Process
 // ============================================
 
-// Script do polyfill ActiveX - emulação completa para DVRs
-const ACTIVEX_POLYFILL_SCRIPT = `
-(function() {
-  if (window.__iePortableActiveXPolyfill) return;
-  window.__iePortableActiveXPolyfill = true;
-  
-  console.log('[ActiveX-Emu] Iniciando emulador completo...');
-  
-  // CLSIDs conhecidos
-  var KNOWN_CLSIDS = {
-    'B6D5419C-D381-4687-9CFC-A9E2CD7008F5': { brand: 'Ipega', type: 'dvr' },
-    '6263DEED-F971-4C18-AB42-3ABCDE741A89': { brand: 'Hikvision', type: 'dvr' },
-    '08CF8D24-DA5E-4C0B-B2E3-E72B3C714BAC': { brand: 'Hikvision', type: 'dvr' },
-    'CCAB80D2-5DCF-44FB-9EAE-0F632B758498': { brand: 'Hikvision', type: 'dvr' },
-    '4B3476C6-3A85-4C2C-BD55-BD8F1E028B00': { brand: 'Dahua', type: 'dvr' },
-    '39B06C8F-91A7-4CAC-8B94-C8B8F26B1A8C': { brand: 'Dahua', type: 'dvr' }
-  };
-  
-  // Estado global
-  var activeXState = {
-    host: window.location.hostname,
-    port: window.location.port || 80,
-    username: 'admin',
-    password: 'admin',
-    loggedIn: false,
-    channels: [],
-    pluginInstalled: true // Fingir que está instalado
-  };
-  
-  // ========================================
-  // Interceptar verificações de plugin
-  // ========================================
-  
-  // Fingir que o navegador é IE
-  Object.defineProperty(navigator, 'userAgent', {
-    get: function() {
-      return 'Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko';
-    },
-    configurable: true
-  });
-  
-  // Fingir que plugins ActiveX estão instalados
-  Object.defineProperty(navigator, 'plugins', {
-    get: function() {
-      var plugins = {
-        length: 1,
-        0: { name: 'ActiveX Plugin', filename: 'activex.dll' },
-        'ActiveX Plugin': { name: 'ActiveX Plugin', filename: 'activex.dll' },
-        item: function(i) { return this[i]; },
-        namedItem: function(n) { return this[n]; },
-        refresh: function() {}
-      };
-      return plugins;
-    },
-    configurable: true
-  });
-  
-  // Interceptar document.body.createControlRange (usado para verificar IE)
-  if (document.body) {
-    document.body.createControlRange = function() {
-      return { add: function() {}, remove: function() {} };
-    };
-  }
-  
-  // Fingir suporte a VBScript
-  window.execScript = function(code, lang) {
-    console.log('[ActiveX-Emu] execScript chamado:', lang);
-    if (lang && lang.toLowerCase() === 'vbscript') {
-      return true;
-    }
-    return eval(code);
-  };
-  
-  // ========================================
-  // Criar controle DVR completo
-  // ========================================
-  
-  function createDVRControl(element) {
-    var ctrl = {
-      readyState: 4,
-      valid: 1,
-      object: null,
-      _host: activeXState.host,
-      _port: activeXState.port,
-      _username: 'admin',
-      _password: 'admin',
-      _loggedIn: false,
-      _channel: 1,
-      _element: element,
-      _videoContainer: null,
-      
-      // Login real
-      Login: function(ip, port, user, pass) {
-        console.log('[ActiveX-Emu] Login:', ip, port, user);
-        this._host = ip || activeXState.host;
-        this._port = port || 80;
-        this._username = user || 'admin';
-        this._password = pass || 'admin';
-        this._loggedIn = true;
-        activeXState.host = this._host;
-        activeXState.username = this._username;
-        activeXState.password = this._password;
-        activeXState.loggedIn = true;
-        return 1;
-      },
-      
-      Logout: function() {
-        this._loggedIn = false;
-        activeXState.loggedIn = false;
-        return 1;
-      },
-      
-      Init: function() { 
-        console.log('[ActiveX-Emu] Init');
-        return 1; 
-      },
-      
-      // Play - tenta mostrar stream
-      Play: function() {
-        console.log('[ActiveX-Emu] Play');
-        this._startStream();
-        return 1;
-      },
-      
-      Stop: function() {
-        console.log('[ActiveX-Emu] Stop');
-        this._stopStream();
-        return 1;
-      },
-      
-      Pause: function() { return 1; },
-      Resume: function() { return 1; },
-      
-      StartRealPlay: function(channel) {
-        console.log('[ActiveX-Emu] StartRealPlay:', channel);
-        this._channel = channel || 1;
-        this._startStream();
-        return 1;
-      },
-      
-      StopRealPlay: function() {
-        this._stopStream();
-        return 1;
-      },
-      
-      ConnectRealPlay: function() {
-        this._startStream();
-        return 1;
-      },
-      
-      SetChannel: function(ch) { 
-        this._channel = ch;
-        return 1; 
-      },
-      GetChannel: function() { return this._channel; },
-      
-      // PTZ
-      PTZControl: function(cmd, speed) {
-        console.log('[ActiveX-Emu] PTZ:', cmd, speed);
-        return 1;
-      },
-      PTZControlEx: function() { return 1; },
-      
-      // Gravação
-      StartRecord: function() { return 1; },
-      StopRecord: function() { return 1; },
-      Playback: function() { return 1; },
-      
-      // Configuração
-      DeviceConfig: function() { return 1; },
-      GetConfig: function() { return '{}'; },
-      SetConfig: function() { return 1; },
-      GetDeviceInfo: function() { return '{}'; },
-      
-      // Snapshot
-      CapturePicture: function() { return 1; },
-      SavePicture: function() { return 1; },
-      
-      // Query
-      QueryRecordFile: function() { return 1; },
-      QueryRecordFileEx: function() { return 1; },
-      
-      // Iniciar stream de vídeo
-      _startStream: function() {
-        var self = this;
-        if (!this._element) return;
-        
-        // Criar container se não existir
-        if (!this._videoContainer) {
-          this._videoContainer = document.createElement('div');
-          this._videoContainer.className = 'activex-emu-video';
-          this._videoContainer.style.cssText = 'width:100%;height:100%;background:#000;display:flex;align-items:center;justify-content:center;position:absolute;top:0;left:0;';
-          
-          var img = document.createElement('img');
-          img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;';
-          img.alt = 'Stream';
-          this._videoContainer._img = img;
-          
-          var status = document.createElement('div');
-          status.style.cssText = 'position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,0.7);color:#fff;padding:3px 8px;font-size:11px;border-radius:3px;';
-          status.textContent = 'Conectando...';
-          this._videoContainer._status = status;
-          
-          this._videoContainer.appendChild(img);
-          this._videoContainer.appendChild(status);
-          
-          // Inserir após o elemento
-          var parent = this._element.parentNode;
-          if (parent) {
-            parent.style.position = 'relative';
-            parent.appendChild(this._videoContainer);
-          }
-        }
-        
-        // Tentar carregar imagem
-        var urls = this._getSnapshotUrls();
-        this._tryUrls(urls, 0);
-      },
-      
-      _stopStream: function() {
-        if (this._videoContainer && this._videoContainer._img) {
-          this._videoContainer._img.src = '';
-        }
-        if (this._refreshInterval) {
-          clearInterval(this._refreshInterval);
-        }
-      },
-      
-      _getSnapshotUrls: function() {
-        var host = this._host || activeXState.host || window.location.hostname;
-        var ch = this._channel || 1;
-        var auth = (this._username && this._password) ? (this._username + ':' + this._password + '@') : '';
-        
-        return [
-          'http://' + host + '/cgi-bin/snapshot.cgi?channel=' + ch,
-          'http://' + host + '/snap.jpg',
-          'http://' + host + '/tmpfs/auto.jpg',
-          'http://' + host + '/image/jpeg.cgi',
-          'http://' + host + '/ISAPI/Streaming/channels/' + ch + '01/picture',
-          'http://' + host + '/cgi-bin/images_snapshot.cgi'
-        ];
-      },
-      
-      _tryUrls: function(urls, index) {
-        var self = this;
-        if (index >= urls.length) {
-          if (this._videoContainer && this._videoContainer._status) {
-            this._videoContainer._status.textContent = 'Não foi possível conectar';
-            this._videoContainer._status.onclick = function() {
-              window.postMessage({ type: 'ACTIVEX_SHOW_PLAYER', clsid: 'B6D5419C-D381-4687-9CFC-A9E2CD7008F5' }, '*');
-            };
-            this._videoContainer._status.style.cursor = 'pointer';
-          }
-          return;
-        }
-        
-        var url = urls[index];
-        var img = this._videoContainer._img;
-        var status = this._videoContainer._status;
-        
-        status.textContent = 'Tentando: ' + url.split('/').pop();
-        
-        var testImg = new Image();
-        testImg.onload = function() {
-          console.log('[ActiveX-Emu] URL funciona:', url);
-          img.src = url;
-          status.textContent = 'Conectado';
-          
-          // Auto-refresh
-          self._refreshInterval = setInterval(function() {
-            img.src = url + '?t=' + Date.now();
-          }, 2000);
-        };
-        testImg.onerror = function() {
-          self._tryUrls(urls, index + 1);
-        };
-        testImg.src = url + '?t=' + Date.now();
-      }
-    };
-    
-    // Definir propriedade object
-    try {
-      Object.defineProperty(ctrl, 'object', {
-        get: function() { return ctrl; },
-        configurable: true
-      });
-    } catch(e) {}
-    
-    return ctrl;
-  }
-  
-  // Criar emulador de MSXML2.DOMDocument
-  function createXMLDocument() {
-    var doc = document.implementation.createDocument('', '', null);
-    
-    // Adicionar métodos que o IE espera
-    doc.loadXML = function(xmlString) {
-      try {
-        var parser = new DOMParser();
-        var newDoc = parser.parseFromString(xmlString, 'application/xml');
-        // Copiar nodes
-        while (doc.firstChild) doc.removeChild(doc.firstChild);
-        for (var i = 0; i < newDoc.childNodes.length; i++) {
-          doc.appendChild(doc.importNode(newDoc.childNodes[i], true));
-        }
-        doc.parseError = { errorCode: 0 };
-        return true;
-      } catch(e) {
-        doc.parseError = { errorCode: 1, reason: e.message };
-        return false;
-      }
-    };
-    
-    doc.load = function(url) {
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET', url, false);
-      try {
-        xhr.send();
-        return doc.loadXML(xhr.responseText);
-      } catch(e) {
-        return false;
-      }
-    };
-    
-    // Propriedades IE
-    doc.parseError = { errorCode: 0, reason: '' };
-    doc.async = false;
-    doc.preserveWhiteSpace = true;
-    doc.resolveExternals = false;
-    
-    // selectNodes e selectSingleNode (XPath)
-    doc.selectNodes = function(xpath) {
-      try {
-        var result = doc.evaluate(xpath, doc, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-        var nodes = [];
-        for (var i = 0; i < result.snapshotLength; i++) {
-          nodes.push(result.snapshotItem(i));
-        }
-        return nodes;
-      } catch(e) {
-        return [];
-      }
-    };
-    
-    doc.selectSingleNode = function(xpath) {
-      var nodes = doc.selectNodes(xpath);
-      return nodes.length > 0 ? nodes[0] : null;
-    };
-    
-    // transformNode para XSLT
-    doc.transformNode = function(xsl) {
-      try {
-        var processor = new XSLTProcessor();
-        processor.importStylesheet(xsl);
-        var result = processor.transformToDocument(doc);
-        return new XMLSerializer().serializeToString(result);
-      } catch(e) {
-        return '';
-      }
-    };
-    
-    // xml property
-    Object.defineProperty(doc, 'xml', {
-      get: function() {
-        return new XMLSerializer().serializeToString(doc);
-      }
-    });
-    
-    // text property
-    Object.defineProperty(doc, 'text', {
-      get: function() {
-        return doc.textContent || '';
-      }
-    });
-    
-    return doc;
-  }
-  
-  // Criar emulador de MSXML2.XMLHTTP
-  function createXMLHTTP() {
-    var xhr = new XMLHttpRequest();
-    
-    // Adicionar propriedades IE
-    Object.defineProperty(xhr, 'responseBody', {
-      get: function() { return xhr.response; }
-    });
-    
-    return xhr;
-  }
-  
-  // Stub para new ActiveXObject()
-  if (!window.ActiveXObject) {
-    window.ActiveXObject = function(progId) {
-      console.log('[ActiveX-Emu] new ActiveXObject:', progId);
-      
-      var progIdLower = progId.toLowerCase();
-      
-      // MSXML2.DOMDocument - Manipulação XML
-      if (progIdLower.includes('domdocument') || progIdLower.includes('xmldom') || 
-          progIdLower === 'msxml2.domdocument' || progIdLower === 'msxml.domdocument' ||
-          progIdLower === 'microsoft.xmldom') {
-        console.log('[ActiveX-Emu] Criando XMLDocument');
-        return createXMLDocument();
-      }
-      
-      // MSXML2.XMLHTTP - Requisições HTTP
-      if (progIdLower.includes('xmlhttp') || progIdLower.includes('serverxmlhttp') ||
-          progIdLower === 'msxml2.xmlhttp' || progIdLower === 'microsoft.xmlhttp') {
-        console.log('[ActiveX-Emu] Criando XMLHTTP');
-        return createXMLHTTP();
-      }
-      
-      // Scripting.FileSystemObject - Sistema de arquivos (stub)
-      if (progIdLower.includes('filesystemobject') || progIdLower.includes('scripting.')) {
-        console.log('[ActiveX-Emu] FileSystemObject (stub)');
-        return {
-          FileExists: function() { return false; },
-          FolderExists: function() { return false; },
-          CreateFolder: function() { return true; },
-          DeleteFile: function() { return true; },
-          OpenTextFile: function() { 
-            return { 
-              ReadAll: function() { return ''; },
-              Write: function() {},
-              Close: function() {}
-            }; 
-          }
-        };
-      }
-      
-      // Shell.Application - Stub
-      if (progIdLower.includes('shell.application') || progIdLower.includes('wscript.shell')) {
-        console.log('[ActiveX-Emu] Shell (stub)');
-        return {
-          Run: function() { return 0; },
-          Exec: function() { return { Status: 0 }; },
-          ExpandEnvironmentStrings: function(s) { return s; },
-          RegRead: function() { return ''; },
-          RegWrite: function() { return true; }
-        };
-      }
-      
-      // Default - DVR Control
-      return createDVRControl(null);
-    };
-    window.ActiveXObject.__polyfill = true;
-  }
-  
-  // Interceptar createElement para elementos object
-  var originalCreateElement = document.createElement.bind(document);
-  document.createElement = function(tagName) {
-    var el = originalCreateElement(tagName);
-    
-    if (tagName.toLowerCase() === 'object') {
-      console.log('[ActiveX-Emu] createElement object interceptado');
-      
-      // Adicionar métodos do controle DVR
-      var ctrl = createDVRControl(el);
-      var keys = Object.keys(ctrl);
-      keys.forEach(function(key) {
-        if (key.startsWith('_')) return;
-        if (typeof ctrl[key] === 'function') {
-          el[key] = ctrl[key].bind(ctrl);
-        }
-      });
-      
-      // Simular readyState
-      el.readyState = 4;
-      el.object = el;
-      
-      // Disparar ready após inserção no DOM
-      var originalAppendChild = Element.prototype.appendChild;
-      var checkInsertion = function() {
-        if (el.parentNode) {
-          setTimeout(function() {
-            if (typeof el.onreadystatechange === 'function') {
-              try { el.onreadystatechange(); } catch(e) {}
-            }
-          }, 50);
-        }
-      };
-      
-      // Observer para detectar inserção
-      setTimeout(checkInsertion, 100);
-    }
-    
-    return el;
-  };
-  
-  // Interceptar getElementById para retornar objetos ActiveX emulados
-  var originalGetById = document.getElementById.bind(document);
-  document.getElementById = function(id) {
-    var el = originalGetById(id);
-    
-    if (el && el.tagName === 'OBJECT' && !el.dataset.ieProcessed) {
-      processActiveXElement(el);
-    }
-    
-    return el;
-  };
-  
-  // Interceptar try-catch global para suprimir erros de ActiveX
-  window.onerror = function(msg, url, line, col, error) {
-    if (msg && (msg.includes('ActiveX') || msg.includes('automation') || 
-        msg.includes('Object doesn\\'t support') || msg.includes('not defined'))) {
-      console.log('[ActiveX-Emu] Erro suprimido:', msg);
-      return true; // Suprimir erro
-    }
-    return false;
-  };
-  
-  // Processar elementos <object> com CLSID
-  function processActiveXElement(el) {
-    if (el.dataset.ieProcessed) return;
-    el.dataset.ieProcessed = 'true';
-    
-    var classid = el.getAttribute('classid') || '';
-    var match = classid.match(/{?([A-F0-9-]{8,36})}?/i);
-    if (!match) return;
-    
-    var clsid = match[1].toUpperCase();
-    var info = KNOWN_CLSIDS[clsid] || { brand: 'Unknown', type: 'unknown' };
-    
-    console.log('[ActiveX-Emu] Processando:', clsid, info.brand);
-    
-    // Notificar o renderer
-    window.postMessage({ type: 'ACTIVEX_OBJECT_TAG', clsid: clsid }, '*');
-    
-    // Criar controle e aplicar ao elemento
-    var ctrl = createDVRControl(el);
-    
-    // Copiar métodos e propriedades
-    var keys = Object.keys(ctrl);
-    keys.forEach(function(key) {
-      if (key.startsWith('_')) return; // Pular privados
-      if (typeof ctrl[key] === 'function') {
-        el[key] = ctrl[key].bind(ctrl);
-      } else {
-        try {
-          Object.defineProperty(el, key, {
-            get: function() { return ctrl[key]; },
-            set: function(v) { ctrl[key] = v; },
-            configurable: true
-          });
-        } catch(e) {
-          el[key] = ctrl[key];
-        }
-      }
-    });
-    
-    // Garantir que object retorna o próprio elemento
-    el.object = el;
-    
-    // Disparar evento ready
-    setTimeout(function() {
-      el.readyState = 4;
-      if (typeof el.onreadystatechange === 'function') {
-        try { el.onreadystatechange(); } catch(e) {}
-      }
-      var evt = document.createEvent('Event');
-      evt.initEvent('readystatechange', true, true);
-      el.dispatchEvent(evt);
-    }, 100);
-  }
-  
-  function scanForActiveX() {
-    var objects = document.querySelectorAll('object[classid], embed[classid]');
-    objects.forEach(processActiveXElement);
-    
-    // Também processar botões e links que podem chamar métodos ActiveX
-    interceptLoginButtons();
-  }
-  
-  // Interceptar botões de login e outros que chamam ActiveX
-  function interceptLoginButtons() {
-    // Encontrar botões de login
-    var buttons = document.querySelectorAll('input[type="button"], input[type="submit"], button, a[href*="javascript"]');
-    
-    buttons.forEach(function(btn) {
-      if (btn.dataset.ieIntercepted) return;
-      btn.dataset.ieIntercepted = 'true';
-      
-      var onclick = btn.getAttribute('onclick') || '';
-      var href = btn.getAttribute('href') || '';
-      var value = (btn.value || btn.textContent || '').toLowerCase();
-      
-      // Detectar se é botão de login
-      var isLoginButton = value.includes('login') || value.includes('entrar') || 
-                          value.includes('acessar') || value.includes('conectar') ||
-                          onclick.includes('Login') || onclick.includes('login');
-      
-      if (isLoginButton || onclick.includes('Login') || href.includes('Login')) {
-        console.log('[ActiveX-Emu] Interceptando botão de login:', btn);
-        
-        // Adicionar nosso handler
-        btn.addEventListener('click', function(e) {
-          console.log('[ActiveX-Emu] Clique no botão de login detectado');
-          
-          // Tentar encontrar campos de usuário e senha
-          var userField = document.querySelector('input[name*="user"], input[name*="User"], input[id*="user"], input[id*="User"], input[name*="name"], input[name*="login"]');
-          var passField = document.querySelector('input[type="password"], input[name*="pass"], input[name*="Pass"], input[id*="pass"]');
-          
-          if (userField && passField) {
-            var username = userField.value || 'admin';
-            var password = passField.value || 'admin';
-            var host = window.location.hostname;
-            
-            console.log('[ActiveX-Emu] Credenciais:', username, '****', 'Host:', host);
-            
-            // Atualizar estado global
-            activeXState.username = username;
-            activeXState.password = password;
-            activeXState.loggedIn = true;
-            
-            // Tentar chamar Login em todos os objetos ActiveX
-            var objects = document.querySelectorAll('object[classid]');
-            objects.forEach(function(obj) {
-              if (typeof obj.Login === 'function') {
-                try {
-                  console.log('[ActiveX-Emu] Chamando Login no objeto');
-                  obj.Login(host, 80, username, password);
-                } catch(e) {
-                  console.log('[ActiveX-Emu] Erro ao chamar Login:', e);
-                }
-              }
-            });
-          }
-          
-          // Permitir que o evento continue (não bloquear)
-        }, true);
-      }
-    });
-    
-    // Interceptar formulários
-    var forms = document.querySelectorAll('form');
-    forms.forEach(function(form) {
-      if (form.dataset.ieIntercepted) return;
-      form.dataset.ieIntercepted = 'true';
-      
-      form.addEventListener('submit', function(e) {
-        console.log('[ActiveX-Emu] Formulário submetido');
-        
-        var userField = form.querySelector('input[name*="user"], input[name*="User"], input[id*="user"], input[name*="name"]');
-        var passField = form.querySelector('input[type="password"]');
-        
-        if (userField && passField) {
-          activeXState.username = userField.value || 'admin';
-          activeXState.password = passField.value || 'admin';
-          activeXState.loggedIn = true;
-          console.log('[ActiveX-Emu] Credenciais capturadas do form');
-        }
-      }, true);
-    });
-  }
-  
-  // Executar após DOM carregado
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', scanForActiveX);
-  } else {
-    setTimeout(scanForActiveX, 50);
-  }
-  
-  // Observer para elementos adicionados dinamicamente
-  var observer = new MutationObserver(function(mutations) {
-    var shouldRescan = false;
-    mutations.forEach(function(m) {
-      m.addedNodes.forEach(function(node) {
-        if (node.nodeType !== 1) return;
-        shouldRescan = true;
-        if (node.matches && node.matches('object[classid], embed[classid]')) {
-          processActiveXElement(node);
-        }
-        var nested = node.querySelectorAll ? node.querySelectorAll('object[classid], embed[classid]') : [];
-        nested.forEach(processActiveXElement);
-      });
-    });
-    // Re-escanear botões quando houver mudanças
-    if (shouldRescan) {
-      setTimeout(interceptLoginButtons, 100);
-    }
-  });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
-  
-  // Interceptar cliques globalmente para capturar cliques em elementos criados via JS
-  document.addEventListener('click', function(e) {
-    var target = e.target;
-    var onclick = target.getAttribute && target.getAttribute('onclick');
-    
-    if (onclick && (onclick.includes('Login') || onclick.includes('login') || onclick.includes('Check'))) {
-      console.log('[ActiveX-Emu] Clique detectado em elemento com onclick:', onclick);
-      
-      // Capturar credenciais
-      var userField = document.querySelector('input[name*="user" i], input[id*="user" i], input[name*="name" i]');
-      var passField = document.querySelector('input[type="password"]');
-      
-      if (userField && passField) {
-        activeXState.username = userField.value || 'admin';
-        activeXState.password = passField.value || 'admin';
-        activeXState.loggedIn = true;
-        console.log('[ActiveX-Emu] Credenciais:', activeXState.username);
-      }
-    }
-  }, true);
-  
-  console.log('[IE Portable] ActiveX Emulator carregado');
-})();
-`;
+// Polyfill ActiveX - carregado via preload (eliminando template literals)
+let ACTIVEX_POLYFILL_SCRIPT = '';
 
 // Função para injetar o polyfill no webview
 async function injectActiveXPolyfill(webview) {
+  if (!ACTIVEX_POLYFILL_SCRIPT) {
+    // Carregar do preload na primeira chamada
+    try {
+      ACTIVEX_POLYFILL_SCRIPT = window.iePortable.getActiveXPolyfill();
+      console.log('[Renderer] Polyfill carregado via preload, tamanho:', ACTIVEX_POLYFILL_SCRIPT.length);
+    } catch(e) {
+      console.error('[Renderer] Falha ao obter polyfill:', e);
+      return false;
+    }
+  }
+  if (!ACTIVEX_POLYFILL_SCRIPT) {
+    console.error('[Renderer] Polyfill vazio');
+    return false;
+  }
   try {
     await webview.executeJavaScript(ACTIVEX_POLYFILL_SCRIPT);
     console.log('[Renderer] ActiveX Polyfill injetado');
@@ -736,6 +45,8 @@ let activeXHandler = null;
 let streamPlayer = null;
 let detectedPluginInfo = null;
 let currentHost = null;
+let activeRtspStreams = []; // IDs dos streams RTSP ativos
+let previewInjected = false; // Evitar reinjetar na mesma sessão
 
 // Função para inicializar referências aos elementos DOM
 function initElements() {
@@ -785,7 +96,17 @@ function initElements() {
     streamConfigModal: document.getElementById('stream-config-modal'),
     urlsModal: document.getElementById('urls-modal'),
     urlsList: document.getElementById('urls-list'),
-    streamPlayerContainer: document.getElementById('stream-player-container')
+    streamPlayerContainer: document.getElementById('stream-player-container'),
+
+    // Modal RTSP Credentials
+    rtspCredentialsModal: document.getElementById('rtsp-credentials-modal'),
+    rtspHost: document.getElementById('rtsp-host'),
+    rtspPort: document.getElementById('rtsp-port'),
+    rtspUser: document.getElementById('rtsp-user'),
+    rtspPass: document.getElementById('rtsp-pass'),
+    rtspChannels: document.getElementById('rtsp-channels'),
+    rtspQuality: document.getElementById('rtsp-quality'),
+    rtspStatusMsg: document.getElementById('rtsp-status-msg')
   };
 }
 
@@ -1371,6 +692,16 @@ function setupWebviewListeners() {
       }
     }
   });
+
+  // Navegação in-page (hash changes em SPAs como Hikvision)
+  elements.webview.addEventListener('did-navigate-in-page', (e) => {
+    if (e.isMainFrame) {
+      currentUrl = e.url;
+      elements.urlInput.value = e.url;
+      console.log('[Renderer] SPA navigation:', e.url);
+      checkForPreviewPage(e.url);
+    }
+  });
   
   // Título alterado
   elements.webview.addEventListener('page-title-updated', (e) => {
@@ -1497,6 +828,17 @@ function setupPluginHandlers() {
   
   elements.urlsModal.querySelector('.modal-close').addEventListener('click', () => {
     elements.urlsModal.classList.add('hidden');
+  });
+
+  // Modal RTSP Credentials
+  document.getElementById('rtsp-connect').addEventListener('click', () => {
+    connectRtspPreview();
+  });
+  document.getElementById('rtsp-cancel').addEventListener('click', () => {
+    elements.rtspCredentialsModal.classList.add('hidden');
+  });
+  elements.rtspCredentialsModal.querySelector('.modal-close').addEventListener('click', () => {
+    elements.rtspCredentialsModal.classList.add('hidden');
   });
 }
 
@@ -1745,10 +1087,16 @@ async function tryWebConfigInterface() {
     const brand = detectedPluginInfo.brand?.toLowerCase() || '';
     
     if (brand.includes('hikvision')) {
-      webConfigUrls.unshift('/doc/page/config.asp', '/doc/page/preview.asp');
-    } else if (brand.includes('dahua')) {
+      webConfigUrls.unshift('/doc/page/config.asp', '/doc/page/preview.asp', '/doc/page/main.asp');
+    } else if (brand.includes('dahua') || brand.includes('intelbras')) {
       webConfigUrls.unshift('/cgi-bin/configManager.cgi?action=getConfig&name=General');
-    } else if (brand.includes('ipega') || brand.includes('qualvision') || brand.includes('tecvoz')) {
+    } else if (brand.includes('tecvoz')) {
+      webConfigUrls.unshift(
+        '/Pages/login.htm', '/view2.html', '/Login.htm',
+        '/cgi-bin/configManager.cgi?action=getConfig&name=General',
+        '/doc/page/login.asp', '/login.htm'
+      );
+    } else if (brand.includes('ipega') || brand.includes('qualvision')) {
       webConfigUrls.unshift('/Pages/login.htm', '/view2.html', '/Login.htm');
     }
   }
@@ -2069,6 +1417,411 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// ============================================
+// Preview Page RTSP Injection
+// ============================================
+
+/**
+ * Verifica se a URL é uma página preview de DVR e oferece RTSP
+ */
+function checkForPreviewPage(url) {
+  if (!url) return;
+  const lo = url.toLowerCase();
+  // Hikvision: #/preview, #/portal/preview
+  // Tecvoz/Dahua: #/realplay, #/live
+  const isPreview = lo.includes('#/preview') || lo.includes('#/realplay') ||
+                    lo.includes('#/live') || lo.includes('/preview.asp') ||
+                    lo.includes('/liveview');
+  if (!isPreview) return;
+
+  console.log('[Renderer] Preview page detected:', url);
+  previewInjected = false; // Reset para nova navegação
+
+  // Extrair host e porta do DVR
+  try {
+    const urlObj = new URL(url);
+    elements.rtspHost.value = urlObj.hostname || '';
+    currentHost = urlObj.host;
+  } catch(e) {
+    elements.rtspHost.value = '';
+  }
+
+  // Mostrar modal de credenciais RTSP após pequeno delay (esperar SPA carregar)
+  setTimeout(() => {
+    showRtspCredentialsModal();
+  }, 1500);
+}
+
+/**
+ * Mostra o modal de credenciais RTSP
+ */
+function showRtspCredentialsModal() {
+  setRtspStatusMsg('', '');
+  elements.rtspCredentialsModal.classList.remove('hidden');
+  elements.rtspPass.focus();
+}
+
+/**
+ * Define mensagem de status no modal RTSP
+ */
+function setRtspStatusMsg(text, type) {
+  const el = elements.rtspStatusMsg;
+  if (!text) {
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = 'block';
+  el.textContent = text;
+  if (type === 'error') {
+    el.style.background = '#ffebee';
+    el.style.color = '#c62828';
+  } else if (type === 'success') {
+    el.style.background = '#e8f5e9';
+    el.style.color = '#2e7d32';
+  } else {
+    el.style.background = '#e3f2fd';
+    el.style.color = '#1565c0';
+  }
+}
+
+/**
+ * Conecta streams RTSP e injeta no webview
+ */
+async function connectRtspPreview() {
+  const host = elements.rtspHost.value.trim();
+  const rtspPort = elements.rtspPort.value.trim() || '554';
+  const user = elements.rtspUser.value.trim() || 'admin';
+  const pass = elements.rtspPass.value;
+  const channels = parseInt(elements.rtspChannels.value) || 4;
+  const quality = elements.rtspQuality.value; // 'main' ou 'sub'
+
+  if (!host) {
+    setRtspStatusMsg('Informe o host do DVR.', 'error');
+    return;
+  }
+
+  setRtspStatusMsg('Verificando proxy RTSP (ffmpeg)...', 'info');
+
+  // Verificar se o proxy RTSP está disponível
+  try {
+    const status = await window.electronAPI.rtspProxyStatus();
+    if (!status.available) {
+      setRtspStatusMsg('ffmpeg não encontrado! Instale ffmpeg para usar streams RTSP. Tentando snapshot/MJPEG...', 'error');
+      // Fallback - tentar snapshot ISAPI direto no webview
+      await injectSnapshotPreview(host, rtspPort, user, pass, channels);
+      elements.rtspCredentialsModal.classList.add('hidden');
+      return;
+    }
+  } catch(e) {
+    setRtspStatusMsg('Erro ao verificar proxy RTSP: ' + e.message, 'error');
+  }
+
+  // Parar streams anteriores
+  await stopAllRtspStreams();
+
+  setRtspStatusMsg(`Conectando ${channels} canais via RTSP...`, 'info');
+
+  // Determinar paths RTSP baseado na marca detectada
+  const brand = detectedPluginInfo?.brand || 'Hikvision';
+  const rtspPaths = buildRtspChannelPaths(brand, channels, quality);
+
+  const connectedStreams = [];
+  let firstFailed = null;
+
+  for (let i = 0; i < rtspPaths.length; i++) {
+    const rtspUrl = `rtsp://${host}:${rtspPort}${rtspPaths[i]}`;
+    setRtspStatusMsg(`Canal ${i + 1}/${rtspPaths.length}: Conectando...`, 'info');
+
+    try {
+      // Tentar HLS (melhor qualidade)
+      const result = await window.electronAPI.rtspStartHls(rtspUrl, user, pass);
+      if (result.success) {
+        connectedStreams.push({
+          channel: i + 1,
+          streamId: result.streamId,
+          hlsUrl: result.hlsUrl,
+          type: 'hls'
+        });
+        activeRtspStreams.push(result.streamId);
+        continue;
+      }
+
+      // Fallback para MJPEG
+      const mjResult = await window.electronAPI.rtspStartMjpeg(rtspUrl, user, pass);
+      if (mjResult.success) {
+        connectedStreams.push({
+          channel: i + 1,
+          streamId: mjResult.streamId,
+          mjpegUrl: mjResult.mjpegUrl,
+          type: 'mjpeg'
+        });
+        activeRtspStreams.push(mjResult.streamId);
+        continue;
+      }
+
+      if (!firstFailed) firstFailed = result.error || mjResult.error || 'Falha desconhecida';
+    } catch(e) {
+      if (!firstFailed) firstFailed = e.message;
+    }
+  }
+
+  if (connectedStreams.length === 0) {
+    setRtspStatusMsg(`Nenhum canal conectado. Erro: ${firstFailed}. Tentando snapshot fallback...`, 'error');
+    await injectSnapshotPreview(host, rtspPort, user, pass, channels);
+    elements.rtspCredentialsModal.classList.add('hidden');
+    return;
+  }
+
+  setRtspStatusMsg(`${connectedStreams.length} canais conectados! Injetando no preview...`, 'success');
+
+  // Injetar os players de vídeo na página do webview
+  await injectRtspPlayersIntoWebview(connectedStreams, channels);
+
+  elements.rtspCredentialsModal.classList.add('hidden');
+  previewInjected = true;
+  updateStatus(`📹 ${connectedStreams.length} câmeras conectadas via RTSP`);
+}
+
+/**
+ * Gera paths RTSP por canal baseado na marca
+ */
+function buildRtspChannelPaths(brand, channels, quality) {
+  const b = (brand || '').toLowerCase();
+  const paths = [];
+
+  for (let ch = 1; ch <= channels; ch++) {
+    if (b.includes('hikvision') || b.includes('hik')) {
+      // Hikvision: /Streaming/Channels/X01 (main) ou X02 (sub)
+      const stream = quality === 'main' ? '01' : '02';
+      paths.push(`/Streaming/Channels/${ch}${stream}`);
+    } else if (b.includes('tecvoz') || b.includes('dahua') || b.includes('intelbras')) {
+      // Dahua/Tecvoz: /cam/realmonitor?channel=X&subtype=0 (main) ou subtype=1 (sub)
+      const subtype = quality === 'main' ? '0' : '1';
+      paths.push(`/cam/realmonitor?channel=${ch}&subtype=${subtype}`);
+    } else {
+      // Genérico Hikvision style
+      const stream = quality === 'main' ? '01' : '02';
+      paths.push(`/Streaming/Channels/${ch}${stream}`);
+    }
+  }
+  return paths;
+}
+
+/**
+ * Injeta players HLS/MJPEG dentro do webview na página de preview
+ */
+async function injectRtspPlayersIntoWebview(streams, totalChannels) {
+  // Gera o JavaScript a injetar no webview
+  const streamsJson = JSON.stringify(streams);
+
+  const script = `
+  (function() {
+    var streams = ${streamsJson};
+    var total = ${totalChannels};
+    console.log('[IE Portable] Injetando ' + streams.length + ' streams no preview');
+
+    // Calcular grid
+    var cols = Math.ceil(Math.sqrt(total));
+    var rows = Math.ceil(total / cols);
+
+    // Procurar o container de vídeo do DVR
+    var container = document.querySelector('#divPlugin')
+      || document.querySelector('.plugin-container')
+      || document.querySelector('.preview-container')
+      || document.querySelector('.video-container')
+      || document.querySelector('#plugin0')
+      || document.querySelector('[class*="plugin"]')
+      || document.querySelector('[class*="video"]')
+      || document.querySelector('[class*="preview"]');
+
+    if (!container) {
+      // Criar overlay sobre a página inteira
+      container = document.createElement('div');
+      container.id = 'ieportable-rtsp-container';
+      container.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;background:#000;';
+      document.body.appendChild(container);
+    } else {
+      // Limpar conteúdo anterior do container
+      container.innerHTML = '';
+      container.style.position = 'relative';
+      container.style.overflow = 'hidden';
+      container.style.background = '#000';
+    }
+
+    // Grid container
+    var grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat('+cols+',1fr);grid-template-rows:repeat('+rows+',1fr);width:100%;height:100%;gap:2px;background:#333;';
+    container.appendChild(grid);
+
+    for (var i = 0; i < total; i++) {
+      var cell = document.createElement('div');
+      cell.style.cssText = 'position:relative;background:#111;overflow:hidden;display:flex;align-items:center;justify-content:center;';
+
+      var streamInfo = null;
+      for (var s = 0; s < streams.length; s++) {
+        if (streams[s].channel === (i + 1)) { streamInfo = streams[s]; break; }
+      }
+
+      if (streamInfo) {
+        if (streamInfo.type === 'hls') {
+          var video = document.createElement('video');
+          video.autoplay = true;
+          video.muted = true;
+          video.playsInline = true;
+          video.style.cssText = 'width:100%;height:100%;object-fit:contain;';
+          video.src = streamInfo.hlsUrl;
+          video.play().catch(function(){});
+          cell.appendChild(video);
+        } else if (streamInfo.type === 'mjpeg') {
+          var img = document.createElement('img');
+          img.style.cssText = 'width:100%;height:100%;object-fit:contain;';
+          img.src = streamInfo.mjpegUrl;
+          cell.appendChild(img);
+        }
+        // Channel label
+        var label = document.createElement('div');
+        label.style.cssText = 'position:absolute;top:4px;left:6px;color:#fff;font-size:12px;background:rgba(0,0,0,0.6);padding:2px 6px;border-radius:3px;pointer-events:none;';
+        label.textContent = 'CH ' + streamInfo.channel;
+        cell.appendChild(label);
+      } else {
+        // Canal sem stream
+        var noSig = document.createElement('div');
+        noSig.style.cssText = 'color:#666;font-size:14px;text-align:center;';
+        noSig.innerHTML = '<div style="font-size:32px;margin-bottom:4px;">📷</div>CH ' + (i+1) + '<br><span style="font-size:11px;">Sem sinal</span>';
+        cell.appendChild(noSig);
+      }
+      grid.appendChild(cell);
+    }
+
+    // Barra de controle no topo
+    var bar = document.createElement('div');
+    bar.style.cssText = 'position:absolute;top:0;left:0;right:0;height:32px;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:space-between;padding:0 12px;z-index:100;color:#fff;font-size:13px;';
+    bar.innerHTML = '<span>📹 IE Portable - ' + streams.length + '/' + total + ' câmeras conectadas</span>'
+      + '<button onclick="document.getElementById(\\'ieportable-rtsp-container\\')&&document.getElementById(\\'ieportable-rtsp-container\\').remove();this.parentElement.remove();" style="background:none;border:1px solid #666;color:#fff;padding:2px 10px;cursor:pointer;border-radius:3px;">✕ Fechar</button>';
+    container.insertBefore(bar, container.firstChild);
+
+    // Ajustar grid para não ficar sob a barra
+    grid.style.marginTop = '32px';
+    grid.style.height = 'calc(100% - 32px)';
+
+    console.log('[IE Portable] RTSP preview injetado com sucesso!');
+  })();
+  `;
+
+  try {
+    await elements.webview.executeJavaScript(script);
+    console.log('[Renderer] RTSP players injetados no webview');
+  } catch(e) {
+    console.error('[Renderer] Erro ao injetar RTSP players:', e);
+  }
+}
+
+/**
+ * Fallback: injeta snapshots ISAPI/MJPEG direto (sem ffmpeg)
+ */
+async function injectSnapshotPreview(host, rtspPort, user, pass, channels) {
+  const auth = btoa(user + ':' + pass);
+  // Tentar extrair a porta HTTP da URL atual
+  let httpPort = '80';
+  try {
+    const urlObj = new URL(currentUrl);
+    httpPort = urlObj.port || '80';
+  } catch(e) {}
+
+  const streamsJson = JSON.stringify({ host, httpPort, auth, user, pass, channels });
+
+  const script = `
+  (function() {
+    var cfg = ${streamsJson};
+    console.log('[IE Portable] Injetando snapshot preview para ' + cfg.channels + ' canais');
+
+    var cols = Math.ceil(Math.sqrt(cfg.channels));
+    var rows = Math.ceil(cfg.channels / cols);
+
+    var container = document.querySelector('#divPlugin')
+      || document.querySelector('.plugin-container')
+      || document.querySelector('.preview-container')
+      || document.querySelector('[class*="plugin"]')
+      || document.querySelector('[class*="video"]');
+
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'ieportable-rtsp-container';
+      container.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;background:#000;';
+      document.body.appendChild(container);
+    } else {
+      container.innerHTML = '';
+      container.style.position = 'relative';
+      container.style.background = '#000';
+    }
+
+    var bar = document.createElement('div');
+    bar.style.cssText = 'height:32px;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:space-between;padding:0 12px;color:#fff;font-size:13px;';
+    bar.innerHTML = '<span>📷 IE Portable - Snapshot Mode (' + cfg.channels + ' canais)</span>'
+      + '<button onclick="document.getElementById(\\'ieportable-rtsp-container\\')&&document.getElementById(\\'ieportable-rtsp-container\\').remove();this.parentElement.parentElement.innerHTML=\\'\\';" style="background:none;border:1px solid #666;color:#fff;padding:2px 10px;cursor:pointer;border-radius:3px;">✕ Fechar</button>';
+    container.appendChild(bar);
+
+    var grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat('+cols+',1fr);grid-template-rows:repeat('+rows+',1fr);width:100%;height:calc(100% - 32px);gap:2px;background:#333;';
+    container.appendChild(grid);
+
+    for (var i = 1; i <= cfg.channels; i++) {
+      var cell = document.createElement('div');
+      cell.style.cssText = 'position:relative;background:#111;overflow:hidden;display:flex;align-items:center;justify-content:center;';
+
+      // Hikvision ISAPI snapshot URL
+      var snapUrl = 'http://' + cfg.user + ':' + cfg.pass + '@' + cfg.host + ':' + cfg.httpPort + '/ISAPI/Streaming/channels/' + i + '01/picture?t=' + Date.now();
+      var img = document.createElement('img');
+      img.style.cssText = 'width:100%;height:100%;object-fit:contain;';
+      img.dataset.channel = i;
+      img.dataset.baseUrl = 'http://' + cfg.user + ':' + cfg.pass + '@' + cfg.host + ':' + cfg.httpPort + '/ISAPI/Streaming/channels/' + i + '01/picture';
+      img.src = snapUrl;
+      img.onerror = function() {
+        this.style.display = 'none';
+        this.parentElement.innerHTML += '<div style="color:#666;font-size:13px;text-align:center;"><div style="font-size:24px;">⚠️</div>Sem sinal</div>';
+      };
+      cell.appendChild(img);
+
+      var label = document.createElement('div');
+      label.style.cssText = 'position:absolute;top:4px;left:6px;color:#fff;font-size:12px;background:rgba(0,0,0,0.6);padding:2px 6px;border-radius:3px;pointer-events:none;';
+      label.textContent = 'CH ' + i;
+      cell.appendChild(label);
+
+      grid.appendChild(cell);
+    }
+
+    // Auto-refresh snapshots every 2 seconds
+    setInterval(function() {
+      var imgs = grid.querySelectorAll('img[data-base-url]');
+      for (var j = 0; j < imgs.length; j++) {
+        imgs[j].src = imgs[j].dataset.baseUrl + '?t=' + Date.now();
+      }
+    }, 2000);
+
+    console.log('[IE Portable] Snapshot preview injetado');
+  })();
+  `;
+
+  try {
+    await elements.webview.executeJavaScript(script);
+    console.log('[Renderer] Snapshot preview injetado no webview');
+  } catch(e) {
+    console.error('[Renderer] Erro ao injetar snapshot preview:', e);
+  }
+}
+
+/**
+ * Para todos os streams RTSP ativos
+ */
+async function stopAllRtspStreams() {
+  if (activeRtspStreams.length > 0) {
+    try {
+      await window.electronAPI.rtspStopAll();
+    } catch(e) {}
+    activeRtspStreams = [];
+  }
 }
 
 // ============================================
